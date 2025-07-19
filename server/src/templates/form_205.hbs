@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Texas Certificate of Formation - Form 205</title>
+    <style>
+        body {
+            font-family: 'Times New Roman', serif;
+            font-size: 12pt;
+            line-height: 1.4;
+            margin: 1in;
+            color: #000;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 20px;
+        }
+        .form-title {
+            font-size: 16pt;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .form-subtitle {
+            font-size: 12pt;
+            margin-bottom: 5px;
+        }
+        .section {
+            margin-bottom: 25px;
+        }
+        .section-title {
+            font-weight: bold;
+            font-size: 13pt;
+            margin-bottom: 10px;
+            text-decoration: underline;
+        }
+        .field-group {
+            margin-bottom: 15px;
+        }
+        .field-label {
+            font-weight: bold;
+            display: inline-block;
+            width: 200px;
+            vertical-align: top;
+        }
+        .field-value {
+            display: inline-block;
+            border-bottom: 1px solid #000;
+            min-width: 300px;
+            padding-bottom: 2px;
+        }
+        .checkbox {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            border: 1px solid #000;
+            margin-right: 5px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .checked {
+            background-color: #000;
+            color: #fff;
+        }
+        .signature-section {
+            margin-top: 40px;
+            border-top: 1px solid #000;
+            padding-top: 20px;
+        }
+        .signature-line {
+            border-bottom: 1px solid #000;
+            width: 300px;
+            height: 30px;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 40px;
+            font-size: 10pt;
+            text-align: center;
+            border-top: 1px solid #000;
+            padding-top: 10px;
+        }
+        .address-block {
+            margin-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="form-title">CERTIFICATE OF FORMATION</div>
+        <div class="form-subtitle">LIMITED LIABILITY COMPANY</div>
+        <div class="form-subtitle">Form 205</div>
+        <div class="form-subtitle">Texas Secretary of State</div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Article 1: Entity Name</div>
+        <div class="field-group">
+            <span class="field-label">Entity Name:</span>
+            <span class="field-value">{{safeString entityName}}</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Article 2: Entity Type</div>
+        <div class="field-group">
+            <span class="checkbox {{#ifEquals entityType 'Limited Liability Company'}}checked{{/ifEquals}}">{{#ifEquals entityType 'Limited Liability Company'}}✓{{/ifEquals}}</span>
+            Limited Liability Company
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Article 3: Registered Agent and Registered Office</div>
+        <div class="field-group">
+            <span class="field-label">Registered Agent Name:</span>
+            <span class="field-value">{{safeString registeredAgentName}}</span>
+        </div>
+        <div class="field-group">
+            <span class="field-label">Registered Office Address:</span>
+            <div class="address-block">
+                <div>{{safeString registeredOfficeAddress.street}}</div>
+                <div>{{safeString registeredOfficeAddress.city}}, {{safeString registeredOfficeAddress.state}} {{safeString registeredOfficeAddress.zipCode}}</div>
+                <div>{{safeString registeredOfficeAddress.county}} County</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Article 4: Management Structure</div>
+        <div class="field-group">
+            <span class="checkbox {{#ifEquals managementStructure 'member_managed'}}checked{{/ifEquals}}">{{#ifEquals managementStructure 'member_managed'}}✓{{/ifEquals}}</span>
+            The limited liability company will be managed by its members.
+        </div>
+        <div class="field-group">
+            <span class="checkbox {{#ifEquals managementStructure 'manager_managed'}}checked{{/ifEquals}}">{{#ifEquals managementStructure 'manager_managed'}}✓{{/ifEquals}}</span>
+            The limited liability company will be managed by managers.
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Article 5: Purpose</div>
+        <div class="field-group">
+            <span class="field-label">Purpose:</span>
+            <span class="field-value">{{#if purpose}}{{safeString purpose}}{{else}}To engage in any lawful act or activity for which a limited liability company may be organized under the Texas Business Organizations Code.{{/if}}</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Article 6: Duration</div>
+        <div class="field-group">
+            <span class="field-label">Duration:</span>
+            <span class="field-value">{{#if duration}}{{safeString duration}}{{else}}Perpetual{{/if}}</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Article 7: Organizer(s)</div>
+        {{#each organizers}}
+        <div class="field-group">
+            <span class="field-label">Organizer {{@index}}:</span>
+            <span class="field-value">{{safeString firstName}} {{safeString lastName}}</span>
+        </div>
+        <div class="address-block">
+            <div>{{safeString address.street}}</div>
+            <div>{{safeString address.city}}, {{safeString address.state}} {{safeString address.zipCode}}</div>
+        </div>
+        {{/each}}
+    </div>
+
+    {{#if effectiveDate}}
+    <div class="section">
+        <div class="section-title">Article 8: Effective Date</div>
+        <div class="field-group">
+            <span class="checkbox checked">✓</span>
+            This document becomes effective on the date it is filed by the Secretary of State.
+        </div>
+        <div class="field-group">
+            <span class="checkbox">{{#if delayedEffectiveDate}}✓{{/if}}</span>
+            This document becomes effective on: {{#if delayedEffectiveDate}}{{formatDate delayedEffectiveDate}}{{else}}_________________{{/if}}
+        </div>
+    </div>
+    {{/if}}
+
+    <div class="signature-section">
+        <div class="section-title">Organizer Signature(s)</div>
+        {{#each organizers}}
+        <div class="field-group">
+            <div>Organizer {{@index}}: {{safeString firstName}} {{safeString lastName}}</div>
+            <div class="signature-line"></div>
+            <div style="font-size: 10pt;">Signature</div>
+            <div style="margin-top: 10px;">Date: {{formatDate ../submissionDate}}</div>
+        </div>
+        {{/each}}
+    </div>
+
+    <div class="footer">
+        <div>Form 205 - Certificate of Formation (Limited Liability Company)</div>
+        <div>Texas Secretary of State</div>
+        <div>Generated on: {{formatDate generatedDate}}</div>
+        <div style="margin-top: 10px; font-size: 9pt;">
+            <strong>Filing Instructions:</strong><br>
+            1. Submit this completed form to the Texas Secretary of State<br>
+            2. Include the required filing fee ($300 as of 2025)<br>
+            3. Ensure all information is accurate and complete<br>
+            4. Keep a copy for your records
+        </div>
+    </div>
+</body>
+</html>

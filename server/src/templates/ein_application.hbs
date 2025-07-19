@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form SS-4 - Application for Employer Identification Number</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 11pt;
+            line-height: 1.3;
+            margin: 0.5in;
+            color: #000;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border: 2px solid #000;
+            padding: 15px;
+        }
+        .form-title {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .form-subtitle {
+            font-size: 10pt;
+            margin-bottom: 3px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .field-row {
+            display: flex;
+            margin-bottom: 8px;
+            align-items: flex-start;
+        }
+        .field-number {
+            width: 30px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        .field-label {
+            flex: 1;
+            margin-right: 10px;
+        }
+        .field-value {
+            border-bottom: 1px solid #000;
+            min-width: 200px;
+            padding-bottom: 2px;
+            flex: 1;
+        }
+        .checkbox {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 1px solid #000;
+            margin-right: 5px;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 8pt;
+        }
+        .checked {
+            background-color: #000;
+            color: #fff;
+        }
+        .instructions {
+            font-size: 9pt;
+            background-color: #f5f5f5;
+            padding: 10px;
+            margin: 15px 0;
+            border: 1px solid #ccc;
+        }
+        .signature-section {
+            margin-top: 30px;
+            border-top: 1px solid #000;
+            padding-top: 15px;
+        }
+        .signature-line {
+            border-bottom: 1px solid #000;
+            width: 250px;
+            height: 25px;
+            margin: 10px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 9pt;
+            text-align: center;
+            border-top: 1px solid #000;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="form-title">Form SS-4</div>
+        <div class="form-subtitle">Application for Employer Identification Number (EIN)</div>
+        <div class="form-subtitle">(For use by employers, corporations, partnerships, trusts, estates, churches,</div>
+        <div class="form-subtitle">government agencies, Indian tribal entities, certain individuals, and others.)</div>
+        <div class="form-subtitle">Department of the Treasury - Internal Revenue Service</div>
+    </div>
+
+    <div class="instructions">
+        <strong>Instructions:</strong> Complete this form and submit it to the IRS to obtain an Employer Identification Number (EIN). 
+        You can apply online at www.irs.gov/ein, by fax, mail, or telephone. See the instructions for Form SS-4 for more information.
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">1</div>
+            <div class="field-label">Legal name of entity (or individual) for whom the EIN is being requested</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{safeString entityName}}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">2</div>
+            <div class="field-label">Trade name of business (if different from name on line 1)</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{#if dbaName}}{{safeString dbaName}}{{else}}N/A{{/if}}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">3</div>
+            <div class="field-label">Executor, administrator, trustee, "care of" name</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">N/A</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">4a</div>
+            <div class="field-label">Mailing address (room, apt., suite no. and street, or P.O. box)</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{safeString mailingAddress.street}}</div>
+        </div>
+        
+        <div class="field-row">
+            <div class="field-number">4b</div>
+            <div class="field-label">City, state, and ZIP code (if foreign, see instructions)</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{safeString mailingAddress.city}}, {{safeString mailingAddress.state}} {{safeString mailingAddress.zipCode}}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">5a</div>
+            <div class="field-label">Street address (if different) (Do not enter a P.O. box.)</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{#if businessAddress}}{{safeString businessAddress.street}}{{else}}Same as mailing address{{/if}}</div>
+        </div>
+        
+        <div class="field-row">
+            <div class="field-number">5b</div>
+            <div class="field-label">City, state, and ZIP code (if foreign, see instructions)</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{#if businessAddress}}{{safeString businessAddress.city}}, {{safeString businessAddress.state}} {{safeString businessAddress.zipCode}}{{else}}Same as mailing address{{/if}}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">6</div>
+            <div class="field-label">County and state where principal business is located</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{safeString businessAddress.county}} County, {{safeString businessAddress.state}}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">7a</div>
+            <div class="field-label">Name of responsible party</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{safeString responsibleParty.firstName}} {{safeString responsibleParty.lastName}}</div>
+        </div>
+        
+        <div class="field-row">
+            <div class="field-number">7b</div>
+            <div class="field-label">SSN, ITIN, or EIN</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{#if responsibleParty.ssn}}{{safeString responsibleParty.ssn}}{{else}}[To be provided]{{/if}}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">8a</div>
+            <div class="field-label">Is this application for a limited liability company (LLC)?</div>
+            <div class="checkbox {{#ifEquals entityType 'LLC'}}checked{{/ifEquals}}">{{#ifEquals entityType 'LLC'}}✓{{/ifEquals}}</div>
+            <span>Yes</span>
+            <div class="checkbox {{#unless entityType}}checked{{/unless}}">{{#unless entityType}}✓{{/unless}}</div>
+            <span>No</span>
+        </div>
+        
+        {{#ifEquals entityType 'LLC'}}
+        <div class="field-row">
+            <div class="field-number">8b</div>
+            <div class="field-label">If 8a is "Yes," enter the number of LLC members</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{memberCount}}</div>
+        </div>
+        {{/ifEquals}}
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">8c</div>
+            <div class="field-label">If 8a is "Yes," was the LLC organized in the United States?</div>
+            <div class="checkbox checked">✓</div>
+            <span>Yes</span>
+            <div class="checkbox"></div>
+            <span>No</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">9a</div>
+            <div class="field-label">Type of entity (check only one box):</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div>
+                <div><span class="checkbox {{#ifEquals entityType 'LLC'}}checked{{/ifEquals}}">{{#ifEquals entityType 'LLC'}}✓{{/ifEquals}}</span> Limited liability company. Enter the number of members: {{#if memberCount}}{{memberCount}}{{else}}___{{/if}}</div>
+                <div><span class="checkbox"></span> Sole proprietorship</div>
+                <div><span class="checkbox"></span> Corporation</div>
+                <div><span class="checkbox"></span> Partnership</div>
+                <div><span class="checkbox"></span> Other (specify): ________________</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">9b</div>
+            <div class="field-label">If a corporation, name the state or foreign country where incorporated</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{#ifEquals entityType 'Corporation'}}Texas{{else}}N/A{{/if}}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">10</div>
+            <div class="field-label">Reason for applying (check only one box):</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div>
+                <div><span class="checkbox checked">✓</span> Started new business (specify type): {{#if businessPurpose}}{{safeString businessPurpose}}{{else}}General business{{/if}}</div>
+                <div><span class="checkbox"></span> Hired employees (Check the box and see line 13.)</div>
+                <div><span class="checkbox"></span> Compliance with IRS withholding regulations</div>
+                <div><span class="checkbox"></span> Other (specify): ________________</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">11</div>
+            <div class="field-label">Date business started or acquired (month, day, year)</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{formatDate formationDate}}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">12</div>
+            <div class="field-label">Closing month of accounting year</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{#if accountingYear}}{{safeString accountingYear}}{{else}}December{{/if}}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">13</div>
+            <div class="field-label">Highest number of employees expected in the next 12 months</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{#if expectedEmployees}}{{expectedEmployees}}{{else}}0{{/if}}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">14</div>
+            <div class="field-label">Check one box that best describes the principal activity of your business:</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div>
+                <div><span class="checkbox"></span> Construction</div>
+                <div><span class="checkbox"></span> Real estate</div>
+                <div><span class="checkbox"></span> Manufacturing</div>
+                <div><span class="checkbox"></span> Transportation & warehousing</div>
+                <div><span class="checkbox"></span> Finance & insurance</div>
+                <div><span class="checkbox checked">✓</span> Other (specify): {{#if businessActivity}}{{safeString businessActivity}}{{else}}Professional services{{/if}}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">15</div>
+            <div class="field-label">Indicate principal line of merchandise sold, specific construction work done, products produced, or services provided</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div class="field-value">{{#if businessDescription}}{{safeString businessDescription}}{{else}}General business services{{/if}}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">16</div>
+            <div class="field-label">To whom are most of the products or services sold? Please check one box:</div>
+        </div>
+        <div class="field-row">
+            <div class="field-number"></div>
+            <div>
+                <div><span class="checkbox checked">✓</span> Public (retail)</div>
+                <div><span class="checkbox"></span> Other businesses (wholesale)</div>
+                <div><span class="checkbox"></span> N/A</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="field-row">
+            <div class="field-number">17</div>
+            <div class="field-label">Has the applicant entity shown on line 1 ever applied for and received an EIN?</div>
+            <div class="checkbox"></div>
+            <span>Yes</span>
+            <div class="checkbox checked">✓</div>
+            <span>No</span>
+        </div>
+    </div>
+
+    <div class="signature-section">
+        <div style="font-weight: bold; margin-bottom: 15px;">Third Party Designee</div>
+        <div class="field-row">
+            <div>Do you want to allow another person to discuss this application with the IRS?</div>
+            <div class="checkbox"></div>
+            <span>Yes. Complete the following.</span>
+            <div class="checkbox checked">✓</div>
+            <span>No</span>
+        </div>
+
+        <div style="font-weight: bold; margin: 20px 0 15px 0;">Sign Here</div>
+        <div class="field-row">
+            <div>Under penalties of perjury, I declare that I have examined this application, and to the best of my knowledge and belief, it is true, correct, and complete.</div>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <div>Applicant's signature: <span class="signature-line"></span> Date: <span class="signature-line" style="width: 150px;"></span></div>
+            <div style="margin-top: 10px;">Name and title (type or print clearly): {{safeString responsibleParty.firstName}} {{safeString responsibleParty.lastName}}, {{#if responsibleParty.title}}{{safeString responsibleParty.title}}{{else}}Member/Manager{{/if}}</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div>Form SS-4 (Rev. 12-2019) - Application for Employer Identification Number</div>
+        <div>Department of the Treasury - Internal Revenue Service</div>
+        <div>Generated on: {{formatDate generatedDate}}</div>
+        <div style="margin-top: 10px; font-size: 8pt;">
+            <strong>Filing Instructions:</strong><br>
+            Submit this form to the IRS by mail, fax, or apply online at www.irs.gov/ein<br>
+            Processing time: Online (immediate), Fax (4 business days), Mail (4-5 weeks)
+        </div>
+    </div>
+</body>
+</html>

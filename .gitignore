@@ -1,0 +1,352 @@
+# AI Catalyst Launch Wizard - Comprehensive .gitignore
+# Protects sensitive data and excludes unnecessary files from version control
+
+# ============================================================================
+# DEPENDENCIES AND PACKAGE MANAGERS
+# ============================================================================
+
+# Node.js dependencies
+node_modules/
+*/node_modules/
+**/node_modules/
+
+# Package manager lock files (can be regenerated)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.pnpm-debug.log*
+
+# NPM cache and logs
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ============================================================================
+# BUILD OUTPUTS AND COMPILATION ARTIFACTS
+# ============================================================================
+
+# Frontend build outputs (Vite/React)
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+
+# Backend build outputs
+lib/
+compiled/
+coverage/
+
+# TypeScript compilation
+*.tsbuildinfo
+.tscache/
+
+# Vite specific
+.vite/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# ============================================================================
+# SENSITIVE INFORMATION AND CREDENTIALS
+# ============================================================================
+
+# Environment variables and configuration
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+.env.*
+
+# API keys and secrets
+config/secrets.json
+config/credentials.json
+secrets/
+credentials/
+
+# DocuSign authentication
+docusign-private-key.txt
+docusign-jwt-key.pem
+*.p12
+*.pfx
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+database.db
+ai-catalyst.db
+
+# Authentication tokens
+auth-tokens.json
+jwt-secrets.json
+
+# ============================================================================
+# DEVELOPMENT AND IDE FILES
+# ============================================================================
+
+# Visual Studio Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Vim/Neovim
+*.swp
+*.swo
+*~
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# ============================================================================
+# OPERATING SYSTEM FILES
+# ============================================================================
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ============================================================================
+# LOGS AND TEMPORARY FILES
+# ============================================================================
+
+# Log files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+.nyc_output/
+
+# Temporary folders
+tmp/
+temp/
+.tmp/
+.temp/
+
+# ============================================================================
+# PROJECT-SPECIFIC EXCLUSIONS
+# ============================================================================
+
+# Drop folder and development directories
+drop-folder/
+dev-testing/
+local-testing/
+sandbox/
+
+# Generated documentation
+docs/generated/
+api-docs/
+coverage-report/
+
+# Backup and archive files
+*.backup
+*.bak
+*.old
+*.orig
+*.rej
+*.archive
+*.zip
+*.tar.gz
+*.7z
+
+# Test data and fixtures
+test-data/
+fixtures/
+mock-data/
+sample-uploads/
+
+# User-specific files
+user-config.json
+personal-notes.md
+todo.txt
+
+# ============================================================================
+# CACHE AND RUNTIME FILES
+# ============================================================================
+
+# ESLint cache
+.eslintcache
+
+# Prettier cache
+.prettiercache
+
+# Stylelint cache
+.stylelintcache
+
+# Jest cache
+.jest/
+
+# Turbo cache
+.turbo/
+
+# Parcel cache
+.cache/
+.parcel-cache/
+
+# Next.js cache
+.next/
+
+# Nuxt.js cache
+.nuxt/
+
+# Gatsby cache
+.cache/
+public/
+
+# Storybook cache
+.storybook/
+
+# ============================================================================
+# DEPLOYMENT AND PRODUCTION
+# ============================================================================
+
+# Deployment artifacts
+deploy/
+deployment/
+.deploy/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# ============================================================================
+# MISCELLANEOUS
+# ============================================================================
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env.test
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# ============================================================================
+# AI CATALYST SPECIFIC
+# ============================================================================
+
+# Local development databases
+server/database/
+server/uploads/
+server/temp/
+
+# Generated legal documents (may contain sensitive info)
+generated-docs/
+legal-templates/filled/
+
+# User data exports
+exports/
+user-data/
+
+# Analytics and metrics data
+analytics/
+metrics/
+
+# Local LLM models and weights (too large for git)
+models/
+*.bin
+*.safetensors
+*.gguf
+
+# End of .gitignore
