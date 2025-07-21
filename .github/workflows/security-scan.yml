@@ -27,12 +27,18 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'npm'
-        
+
     - name: Install dependencies
       run: |
-        npm ci
-        cd server && npm ci
+        # Install frontend dependencies
+        if [ -f "package.json" ]; then
+          npm install
+        fi
+
+        # Install backend dependencies
+        if [ -f "server/package.json" ]; then
+          cd server && npm install
+        fi
         
     - name: Run npm audit (Frontend)
       run: |
@@ -71,7 +77,7 @@ jobs:
         
     - name: Upload Semgrep results to GitHub
       uses: github/codeql-action/upload-sarif@v3
-      if: always()
+      if: always() && hashFiles('semgrep.sarif') != ''
       with:
         sarif_file: semgrep.sarif
         

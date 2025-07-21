@@ -56,10 +56,6 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: |
-          package-lock.json
-          server/package-lock.json
 
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -103,8 +99,24 @@ jobs:
 
     - name: Install Node.js dependencies
       run: |
-        npm ci
-        cd server && npm ci
+        # Install frontend dependencies
+        if [ -f "package.json" ]; then
+          if [ -f "package-lock.json" ]; then
+            npm ci
+          else
+            npm install
+          fi
+        fi
+
+        # Install backend dependencies
+        if [ -f "server/package.json" ]; then
+          cd server
+          if [ -f "package-lock.json" ]; then
+            npm ci
+          else
+            npm install
+          fi
+        fi
 
     - name: Configure Git
       run: |
