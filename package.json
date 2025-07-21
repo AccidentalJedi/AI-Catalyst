@@ -19,7 +19,11 @@
     "server:check": "cd server && npm run check",
     "dev:full": "concurrently \"npm run server:dev\" \"npm run dev\"",
     "install:all": "npm install && cd server && npm install",
-    "build:all": "npm run build && npm run server:build"
+    "build:all": "npm run build && npm run server:build",
+    "setup": "npm run install:all && npm run setup:env",
+    "setup:env": "node -e \"const fs=require('fs'); if(!fs.existsSync('server/.env')){fs.existsSync('server/.env.example')?fs.copyFileSync('server/.env.example','server/.env'):fs.writeFileSync('server/.env','JWT_SECRET=dev-secret\\nPORT=3001\\nNODE_ENV=development\\nDATABASE_PATH=./data/ai-catalyst.db\\n')}\"",
+    "start": "npm run dev:full",
+    "postinstall": "cd server && npm install"
   },
   "dependencies": {
     "react": "^18.2.0",

@@ -132,14 +132,50 @@ A functional frontend wizard that collects user information through forms, with 
 - ❌ **Texas Secretary of State API** - Not connected
 - ❌ **IRS Systems** - No integration attempted
 
-## 🚀 Installation and Usage Instructions
+## 📸 Current Wizard Interface
 
-### Prerequisites
-- **Node.js 18+** (tested with v24.4.1)
-- **npm** or **yarn**
-- **Git** for cloning the repository
+![AI Catalyst Launch Wizard](ScreenShots/AI-Catalyst.png)
 
-### Step-by-Step Setup
+*The AI Catalyst Launch Wizard interface showing the Personal Information step with the comprehensive sidebar navigation, progress tracking, and TurboTax-style form design.*
+
+## �🚀 Installation and Usage Instructions
+
+### 🎯 **Quick Start (Recommended for Non-Technical Users)**
+
+#### **Windows Users:**
+1. **Download/Clone** the AI Catalyst project to your computer
+2. **Double-click `install.bat`** - This will automatically:
+   - Check for Node.js 18+ (shows download link if missing)
+   - Install all dependencies for both frontend and backend
+   - Set up the SQLite database and configuration files
+   - Initialize the development environment with proper directory structure
+   - Create environment variables and configuration files
+3. **Double-click `run.bat`** - This sophisticated automation script will:
+   - **Validate Environment**: Check Node.js availability and dependency installation
+   - **Port Conflict Detection**: Scan for conflicts on ports 3000/3001 with user options
+   - **Sequential Server Startup**: Start backend (port 3001) first, then frontend (port 3000)
+   - **Automatic Browser Launch**: Open http://localhost:3000 when servers are ready
+   - **Real-time Status Monitoring**: Display server health checks and startup progress
+   - **Comprehensive Error Handling**: Provide clear troubleshooting guidance if issues occur
+   - **User-Friendly Interface**: Keep you informed with detailed console output and instructions
+
+#### **macOS/Linux Users:**
+1. **Download/Clone** the AI Catalyst project to your computer
+2. **Run `./install.sh`** in terminal - This will automatically:
+   - Check for Node.js (shows installation instructions if missing)
+   - Install all dependencies for both frontend and backend
+   - Set up the SQLite database and configuration files
+   - Initialize the development environment
+3. **Run `./run.sh`** - This will:
+   - Start both frontend (port 3000) and backend (port 3001) servers
+   - Open your browser to http://localhost:3000
+   - Display real-time status and instructions in the console
+
+### 📋 **Prerequisites**
+- **Node.js 18+** (scripts will check and provide download links)
+- **Git** for cloning the repository (or download ZIP)
+
+### 🛠️ **Manual Setup (For Developers)**
 
 #### 1. Clone and Install
 ```bash
@@ -147,73 +183,95 @@ A functional frontend wizard that collects user information through forms, with 
 git clone <repository-url>
 cd ai-catalyst
 
-# Install frontend dependencies
-npm install
+# Automated setup (installs everything)
+npm run setup
 
-# Install backend dependencies
-cd server
+# OR manual step-by-step:
 npm install
-cd ..
+cd server && npm install && cd ..
 ```
 
-#### 2. Environment Configuration
+#### 2. Environment Configuration (Optional)
 ```bash
-# Create environment file (optional - has fallbacks)
-cp server/.env.example server/.env
-```
-
-**Environment Variables (All Optional - Has Development Fallbacks):**
-```env
-# JWT Configuration
-JWT_SECRET=your-secret-key-here
-
-# DocuSign (Not Functional Yet)
-DOCUSIGN_INTEGRATION_KEY=your-integration-key
-DOCUSIGN_USER_ID=your-user-id
-DOCUSIGN_ACCOUNT_ID=your-account-id
-DOCUSIGN_PRIVATE_KEY=your-private-key
-
-# Database (Uses SQLite by default)
-DATABASE_PATH=./data/ai-catalyst.db
-
-# Server Configuration
-PORT=3001
-NODE_ENV=development
+# Environment file is created automatically
+# Edit server/.env if you need custom configuration
 ```
 
 #### 3. Start the Application
 ```bash
-# Option 1: Start both frontend and backend together
+# Option 1: One command to start everything
+npm start
+
+# Option 2: Start both servers together
 npm run dev:full
 
-# Option 2: Start separately (in different terminals)
-# Terminal 1 - Backend
-npm run server:dev
-
-# Terminal 2 - Frontend
-npm run dev
+# Option 3: Start separately (in different terminals)
+npm run server:dev  # Backend (port 3001)
+npm run dev         # Frontend (port 3000)
 ```
 
 #### 4. Access the Application
 - **Frontend**: http://localhost:3000
 - **Backend**: http://localhost:3001
-- **Database**: SQLite file created automatically
+- **Database**: SQLite file created automatically at `server/data/ai-catalyst.db`
+
+### 🎯 **Installation Files Included**
+
+The project includes automated installation scripts for easy setup:
+
+- **`install.bat`** (Windows) / **`install.sh`** (macOS/Linux)
+  - Checks for Node.js installation and provides download links if missing
+  - Installs all frontend dependencies (`npm install`)
+  - Installs all backend dependencies (`cd server && npm install`)
+  - Creates necessary directories and configuration files
+  - Initializes the SQLite database with schema
+  - Sets up development environment variables
+
+- **`run.bat`** (Windows) / **`run.sh`** (macOS/Linux)
+  - **Pre-flight Checks**: Validates Node.js installation and dependency availability
+  - **Port Management**: Detects conflicts on ports 3000/3001 with interactive resolution options
+  - **Intelligent Startup**: Sequential server initialization (backend first, then frontend)
+  - **Health Monitoring**: Waits up to 60 seconds for servers to be ready with progress indicators
+  - **Automatic Browser Launch**: Opens http://localhost:3000 when application is fully ready
+  - **Real-time Status Display**: Shows server logs, startup progress, and operational status
+  - **Error Recovery Guidance**: Provides specific troubleshooting steps for common issues
+  - **User-Friendly Operation**: Clear instructions for stopping servers and managing the application
 
 ### What You'll See
 
-1. **AI Catalyst Launch Wizard** interface loads
-2. **7-step wizard** for business formation data collection
-3. **Form validation** and auto-save functionality
-4. **Progress tracking** through the wizard steps
-5. **Professional UI** with sidebar navigation
+**During Startup (run.bat execution):**
+1. **Automated Environment Validation** - Node.js and dependency checks with clear status messages
+2. **Port Conflict Resolution** - Interactive prompts if ports 3000/3001 are in use
+3. **Sequential Server Launch** - Backend and frontend servers starting with progress indicators
+4. **Health Check Monitoring** - Real-time status updates as servers become ready
+5. **Automatic Browser Launch** - Your default browser opens to the application when ready
+
+**In the Application Interface:**
+1. **AI Catalyst Launch Wizard** interface loads with professional dark theme
+2. **Comprehensive sidebar navigation** showing all 7 phases with 30+ steps
+3. **Progress tracking** with completion percentages and step indicators
+4. **TurboTax-style form interface** with validation and auto-save
+5. **Personal Information step** as shown in the screenshot above
+6. **Responsive design** that works on desktop and mobile devices
+7. **Real-time form validation** with helpful error messages
+
+### Current Functional Features
+
+- ✅ **Complete 7-step wizard interface** with professional UI
+- ✅ **Form data collection and validation** using React Hook Form + Yup
+- ✅ **Auto-save functionality** to browser localStorage
+- ✅ **Progress tracking** through wizard steps
+- ✅ **Responsive sidebar navigation** with step completion indicators
+- ✅ **Backend server infrastructure** with Express.js and SQLite
+- ✅ **Development environment** with hot reloading and TypeScript
 
 ### Current Limitations
 
-- **No real backend integration** - Forms save to browser localStorage
-- **No document generation** - Data collection only
-- **No external API calls** - All integrations are mocked
-- **No user accounts** - No login/signup functionality
-- **No data persistence** - Refresh loses progress
+- **Limited backend integration** - Forms save to browser localStorage, not database
+- **No document generation** - Data collection only, no actual document creation
+- **No external API calls** - All integrations are mocked or simulated
+- **No user accounts** - No login/signup functionality implemented
+- **No session persistence** - Refresh loses progress (localStorage only)
 
 ## �️ Troubleshooting Common Issues
 
