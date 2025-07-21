@@ -62,9 +62,31 @@ jobs:
       with:
         python-version: '3.11'
 
+    - name: Install GitHub CLI
+      run: |
+        # GitHub CLI is pre-installed on ubuntu-latest, but ensure it's authenticated
+        echo "🔧 Configuring GitHub CLI..."
+        echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+        gh auth status
+
     - name: Install Python dependencies
       run: |
-        pip install PyYAML aider-chat requests
+        echo "🐍 Installing Python dependencies..."
+        pip install --upgrade pip
+
+        # Install core dependencies first
+        pip install PyYAML requests
+
+        # Install aider-chat with fallback handling
+        if ! pip install aider-chat; then
+          echo "⚠️ aider-chat installation failed, trying alternative approach..."
+          pip install --no-deps aider-chat || {
+            echo "❌ aider-chat installation failed completely"
+            echo "🔄 Continuing without aider-chat - will use GitHub Copilot native features only"
+          }
+        fi
+
+        echo "✅ Python dependencies installation completed"
 
     - name: Validate environment and security
       run: |
@@ -394,6 +416,13 @@ jobs:
 
         def execute_with_aider_smart_model(task):
             # Use Aider with intelligently selected model based on task characteristics
+
+            # Check if aider is available
+            try:
+                subprocess.run(['aider', '--version'], capture_output=True, check=True)
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                print("⚠️ Aider not available, falling back to GitHub Copilot Agent")
+                return execute_with_copilot_agent(task)
 
             # Select optimal model for this specific task
             selected_model = select_optimal_model(task)
