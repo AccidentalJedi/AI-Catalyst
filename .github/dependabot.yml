@@ -1,0 +1,82 @@
+# AI Catalyst - Dependabot Configuration
+# Automatically updates dependencies to patch security vulnerabilities
+
+version: 2
+updates:
+  # Frontend dependencies (React/TypeScript)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "AccidentalJedi"
+    assignees:
+      - "AccidentalJedi"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "security"
+    
+  # Backend dependencies (Node.js/Express)
+  - package-ecosystem: "npm"
+    directory: "/server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:30"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "AccidentalJedi"
+    assignees:
+      - "AccidentalJedi"
+    commit-message:
+      prefix: "deps(server)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "backend"
+      - "security"
+
+  # GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "AccidentalJedi"
+    assignees:
+      - "AccidentalJedi"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "github-actions"
+      - "ci/cd"
+      - "security"
+
+  # Docker dependencies (if we add Docker later)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:30"
+    open-pull-requests-limit: 2
+    reviewers:
+      - "AccidentalJedi"
+    assignees:
+      - "AccidentalJedi"
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    labels:
+      - "docker"
+      - "security"

@@ -1,33 +1,37 @@
 # AI Catalyst - Safe MCP Integration (Option 2)
 
-## 🤖 **Automated GitHub-Native Development System**
+## 🤖 **24/7 Continuous GitHub-Native Development System**
 
-This system automatically executes VVS (Veteran Verification System) enhancement tasks using GitHub Actions and Aider, creating PRs for human review.
+This system continuously executes VVS (Veteran Verification System) enhancement tasks using GitHub Actions and Aider with intelligent model selection, rate limiting, and cost optimization. Runs 24/7 until all tasks complete.
 
 ## 📋 **System Components**
 
 ### **Core Files**
+
 - `task_queue.yaml` - 15 corrected VVS enhancement tasks
-- `.github/workflows/safe-mcp-automation.yml` - GitHub Actions automation
+- `.github/workflows/safe-mcp-automation.yml` - 24/7 GitHub Actions automation
+- `.aider.model.settings.yml` - Cost-optimized model selection
+- `.aider.conf.yml` - Automation-optimized Aider configuration
 - `alternating_ai_controller.py` - Local testing (optional)
 
 ### **How It Works**
-```
-GitHub Actions (Daily 2 AM UTC)
+
+```text
+GitHub Actions (Every 30 minutes, 24/7)
     ↓
-Reads task_queue.yaml
+Priority-based task selection (VVS first)
     ↓
-Finds next pending VVS task
+Intelligent model selection (cost-optimized)
     ↓
 Creates isolated branch
     ↓
-Executes task with Aider
+Executes task with Aider + rate limiting
     ↓
-Validates changes (TypeScript + tests)
+Validates changes (TypeScript + tests + safety limits)
     ↓
 Creates PR for human review
     ↓
-Waits for approval & merge
+Continuous operation until queue empty
 ```
 
 ## 🚀 **Setup (One-Time)**
@@ -39,10 +43,15 @@ Waits for approval & merge
 - Enable "Allow GitHub Actions to create and approve pull requests"
 
 ### **2. Ready to Use**
+
 The system is now configured and will:
-- Run automatically daily at 2 AM UTC
-- Process next pending VVS task from `task_queue.yaml`
-- Create PR when task completes
+
+- Run automatically every 30 minutes, 24/7
+- Use intelligent model selection for cost optimization
+- Process tasks by priority (VVS first, then by priority level)
+- Handle rate limits with exponential backoff
+- Create PRs when tasks complete
+- Continue until all tasks are done
 
 ## 🎯 **VVS Task Queue**
 

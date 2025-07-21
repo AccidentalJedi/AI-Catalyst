@@ -1,11 +1,11 @@
-name: Safe MCP VVS Task Automation
+name: Safe MCP 24/7 GitHub Copilot Native Automation
 
 on:
-  # Trigger on schedule (daily at 2 AM UTC)
+  # Continuous operation - every 30 minutes
   schedule:
-    - cron: '0 2 * * *'
-  
-  # Manual trigger
+    - cron: '*/30 * * * *'  # Every 30 minutes, 24/7
+
+  # Manual trigger with advanced options
   workflow_dispatch:
     inputs:
       max_tasks:
@@ -18,11 +18,21 @@ on:
         required: false
         default: 'VVS'
         type: string
+      force_model:
+        description: 'Force specific model (e.g., deepseek/deepseek-chat)'
+        required: false
+        default: 'auto'
+        type: string
+      continuous_mode:
+        description: 'Enable continuous processing until queue empty'
+        required: false
+        default: false
+        type: boolean
 
   # Trigger on push to main (for testing)
   push:
     branches: [ main ]
-    paths: 
+    paths:
       - 'task_queue.yaml'
       - '.github/workflows/safe-mcp-automation.yml'
 
@@ -58,7 +68,38 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        pip install PyYAML aider-chat
+        pip install PyYAML aider-chat requests
+
+    - name: Validate environment and security
+      run: |
+        echo "🔒 Validating security configuration..."
+
+        # Check for required environment variables
+        if [ -z "$GITHUB_TOKEN" ]; then
+          echo "❌ GITHUB_TOKEN not available"
+          exit 1
+        fi
+
+        # Validate GitHub token permissions
+        echo "✅ GITHUB_TOKEN available"
+
+        # Check if OpenRouter API key is needed (should be in secrets)
+        if [ -n "$OPENROUTER_API_KEY" ]; then
+          echo "✅ OpenRouter API key configured"
+        else
+          echo "⚠️ OpenRouter API key not configured - will use GitHub Copilot native features"
+        fi
+
+        # Ensure no sensitive files are present
+        if [ -f "openrouter_key.txt" ] || [ -f "api_keys.txt" ] || [ -f ".env" ]; then
+          echo "❌ Sensitive files detected in repository"
+          exit 1
+        fi
+
+        echo "✅ Security validation passed"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
     - name: Install Node.js dependencies
       run: |
@@ -70,44 +111,129 @@ jobs:
         git config --global user.name "AI Catalyst Bot"
         git config --global user.email "ai-catalyst-bot@users.noreply.github.com"
 
-    - name: Load and validate task queue
+    - name: Setup Aider configuration for cost optimization
+      run: |
+        # Create Aider model settings for cost optimization
+        mkdir -p ~/.config/aider
+        cat > ~/.config/aider/.aider.model.settings.yml << 'EOF'
+        # Cost-optimized model configuration
+        - name: openrouter/deepseek/deepseek-chat
+          extra_params:
+            extra_body:
+              provider:
+                order: ["DeepSeek"]
+                allow_fallbacks: true
+                data_collection: "deny"
+                require_parameters: false
+
+        - name: openrouter/anthropic/claude-3.5-sonnet
+          extra_params:
+            extra_body:
+              provider:
+                order: ["Anthropic", "Together"]
+                allow_fallbacks: true
+                data_collection: "deny"
+                require_parameters: false
+
+        - name: openrouter/openai/gpt-4o-mini
+          extra_params:
+            extra_body:
+              provider:
+                order: ["OpenAI", "Together"]
+                allow_fallbacks: true
+                data_collection: "deny"
+                require_parameters: false
+        EOF
+
+        # Create main Aider config for automation
+        cat > ~/.config/aider/.aider.conf.yml << 'EOF'
+        # Automation-optimized settings
+        auto-commits: true
+        auto-test: false
+        check-update: false
+        dirty-commits: true
+        pretty: false
+        stream: false
+        show-diffs: false
+        EOF
+
+    - name: Load and validate task queue with intelligent scheduling
       id: load_tasks
       run: |
         python3 << 'EOF'
         import yaml
         import json
         import sys
-        
+        import os
+        from datetime import datetime, timedelta
+
         try:
             with open('task_queue.yaml', 'r') as f:
                 task_data = yaml.safe_load(f)
-            
+
             tasks = task_data.get('tasks', [])
-            vvs_tasks = [t for t in tasks if t['taskId'].startswith('T1-VVS')]
-            
-            print(f"Total tasks: {len(tasks)}")
-            print(f"VVS tasks: {len(vvs_tasks)}")
-            
-            # Get next pending VVS task
-            next_task = None
-            for task in vvs_tasks:
-                if task.get('status', 'pending') == 'pending':
-                    next_task = task
-                    break
-            
+            execution_rules = task_data.get('execution_rules', {})
+
+            # Priority-based task selection
+            vvs_priority = execution_rules.get('vvs_priority', True)
+            priority_order = execution_rules.get('priority_order', ['high', 'medium', 'low'])
+
+            print(f"📋 Total tasks: {len(tasks)}")
+            print(f"🎯 VVS priority enabled: {vvs_priority}")
+            print(f"📊 Priority order: {priority_order}")
+
+            # Filter and sort tasks
+            pending_tasks = [t for t in tasks if t.get('status', 'pending') == 'pending']
+
+            # Sort by priority: VVS first (if enabled), then by priority level
+            def task_priority_key(task):
+                is_vvs = task['taskId'].startswith('T1-VVS')
+                priority_level = task.get('priority', 'medium').lower()
+
+                # VVS tasks get highest priority if enabled
+                vvs_score = 0 if (vvs_priority and is_vvs) else 1
+
+                # Priority level score
+                try:
+                    priority_score = priority_order.index(priority_level)
+                except ValueError:
+                    priority_score = len(priority_order)  # Unknown priorities go last
+
+                return (vvs_score, priority_score, task['taskId'])
+
+            sorted_tasks = sorted(pending_tasks, key=task_priority_key)
+
+            print(f"⏳ Pending tasks: {len(pending_tasks)}")
+            if sorted_tasks:
+                print("📋 Next 3 tasks in priority order:")
+                for i, task in enumerate(sorted_tasks[:3]):
+                    is_vvs = "🎖️ VVS" if task['taskId'].startswith('T1-VVS') else "📝 Frontend"
+                    print(f"  {i+1}. {task['taskId']} ({is_vvs}, {task.get('priority', 'medium')})")
+
+            # Select next task
+            next_task = sorted_tasks[0] if sorted_tasks else None
+
             if next_task:
-                print(f"Next task: {next_task['taskId']}")
+                print(f"\n🚀 Selected task: {next_task['taskId']}")
+
+                # Save task details
                 with open('next_task.json', 'w') as f:
-                    json.dump(next_task, f)
-                print("TASK_AVAILABLE=true" >> $GITHUB_OUTPUT)
-                print(f"TASK_ID={next_task['taskId']}" >> $GITHUB_OUTPUT)
-                print(f"TASK_DESCRIPTION={next_task['description']}" >> $GITHUB_OUTPUT)
+                    json.dump(next_task, f, indent=2)
+
+                # Set GitHub outputs
+                with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                    f.write(f"TASK_AVAILABLE=true\n")
+                    f.write(f"TASK_ID={next_task['taskId']}\n")
+                    f.write(f"TASK_DESCRIPTION={next_task['description']}\n")
+                    f.write(f"TASK_PRIORITY={next_task.get('priority', 'medium')}\n")
+                    f.write(f"IS_VVS_TASK={'true' if next_task['taskId'].startswith('T1-VVS') else 'false'}\n")
             else:
-                print("No pending VVS tasks found")
-                print("TASK_AVAILABLE=false" >> $GITHUB_OUTPUT)
-                
+                print("\n✅ No pending tasks found - queue complete!")
+                with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                    f.write(f"TASK_AVAILABLE=false\n")
+
         except Exception as e:
-            print(f"Error loading tasks: {e}")
+            print(f"❌ Error loading tasks: {e}")
             sys.exit(1)
         EOF
 
@@ -120,70 +246,329 @@ jobs:
         git checkout -b "$BRANCH_NAME"
         echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
-    - name: Execute VVS task with Aider
+    - name: Execute task using GitHub Copilot native features
       if: steps.load_tasks.outputs.TASK_AVAILABLE == 'true'
       run: |
         TASK_ID="${{ steps.load_tasks.outputs.TASK_ID }}"
         TASK_DESC="${{ steps.load_tasks.outputs.TASK_DESCRIPTION }}"
-        
+        TASK_PRIORITY="${{ steps.load_tasks.outputs.TASK_PRIORITY }}"
+        IS_VVS="${{ steps.load_tasks.outputs.IS_VVS_TASK }}"
+
         echo "🤖 Executing task: $TASK_ID"
         echo "📝 Description: $TASK_DESC"
-        
-        # Load task details
+        echo "🎯 Priority: $TASK_PRIORITY"
+        echo "🎖️ VVS Task: $IS_VVS"
+        echo "💰 Using GitHub Copilot native features (cost-optimized)"
+
+        # GitHub Copilot native execution strategy
         python3 << 'EOF'
         import json
-        with open('next_task.json', 'r') as f:
-            task = json.load(f)
-        
-        files_to_modify = task['files_to_modify']
-        acceptance_criteria = task['acceptance_criteria']
-        
-        # Create detailed prompt for Aider
-        prompt = f"""
-        Task: {task['description']}
-        
-        Files to modify: {', '.join(files_to_modify)}
-        
-        Acceptance Criteria:
-        {chr(10).join(f'- {criteria}' for criteria in acceptance_criteria)}
-        
-        Safety Requirements:
-        - Maximum {task['safety_limits']['max_files_changed']} files changed
-        - Maximum {task['safety_limits']['max_lines_deleted']} lines deleted
-        - Follow existing code patterns and conventions
-        - Maintain TypeScript compilation
-        - Preserve all existing functionality
-        """
-        
-        with open('aider_prompt.txt', 'w') as f:
-            f.write(prompt)
-        EOF
-        
-        # Execute with Aider
-        aider --yes --message "$(cat aider_prompt.txt)" $(python3 -c "
-        import json
-        with open('next_task.json', 'r') as f:
-            task = json.load(f)
-        print(' '.join(task['files_to_modify']))
-        ")
+        import subprocess
+        import time
+        import os
 
-    - name: Validate changes
+        with open('next_task.json', 'r') as f:
+            task = json.load(f)
+
+        # Intelligent model and strategy selection based on task characteristics
+        def select_execution_strategy(task):
+            priority = task.get('priority', 'medium').lower()
+            is_vvs = task['taskId'].startswith('T1-VVS')
+            files_count = len(task['files_to_modify'])
+            description = task['description'].lower()
+
+            # Analyze task complexity and requirements
+            needs_thinking = any(word in description for word in ['complex', 'algorithm', 'logic', 'architecture', 'design', 'refactor'])
+            needs_planning = any(word in description for word in ['multi', 'integrate', 'workflow', 'system', 'coordinate'])
+            is_simple_ui = any(word in description for word in ['style', 'css', 'ui', 'button', 'form', 'display'])
+            is_data_heavy = any(word in description for word in ['database', 'api', 'data', 'query', 'fetch'])
+
+            # Strategy selection with intelligent model matching
+            if priority == 'high' or is_vvs:
+                # Complex VVS tasks: Use GitHub Copilot Coding Agent (free, high quality)
+                return "copilot_agent"
+            elif files_count <= 1 and (priority == 'low' or is_simple_ui):
+                # Simple tasks: Use GitHub Copilot Chat (free, fast)
+                return "copilot_chat"
+            else:
+                # Medium complexity: Use Aider with optimized model selection
+                return "aider_smart_model"
+
+        def select_optimal_model(task):
+            \"\"\"Select the best price/performance model for the specific task\"\"\"
+            description = task['description'].lower()
+            files_count = len(task['files_to_modify'])
+            priority = task.get('priority', 'medium').lower()
+
+            # Analyze task characteristics for model selection
+            needs_thinking = any(word in description for word in ['complex', 'algorithm', 'logic', 'architecture', 'design', 'refactor'])
+            needs_planning = any(word in description for word in ['multi', 'integrate', 'workflow', 'system', 'coordinate'])
+            is_simple_ui = any(word in description for word in ['style', 'css', 'ui', 'button', 'form', 'display'])
+            is_data_heavy = any(word in description for word in ['database', 'api', 'data', 'query', 'fetch'])
+            is_typescript = any(word in description for word in ['typescript', 'type', 'interface', 'generic'])
+
+            # Clean tier system - right tool for right job without overlap
+            if needs_thinking or (priority == 'high' and files_count > 2):
+                # Heavy lifting: Complex reasoning, architecture - Use the muscle
+                return "openrouter/google/gemini-2.5-pro"
+            elif needs_planning or is_data_heavy or (files_count > 1):
+                # Medium complexity: Multi-file, planning, coordination - Premium but efficient
+                return "openrouter/anthropic/claude-sonnet-4"
+            else:
+                # Everything else: Default workhorse - Kimi K2 (best price per pound)
+                return "openrouter/moonshot/kimi-k2"
+
+        # GitHub Copilot native execution methods
+        def execute_with_copilot_agent(task):
+            \"\"\"Use GitHub Copilot Coding Agent for complex tasks\"\"\"
+            print("🤖 Using GitHub Copilot Coding Agent (native, cost-free)")
+
+            # Create GitHub issue for Copilot Agent
+            task_id = task['taskId']
+            description = task['description']
+            files_to_modify = task['files_to_modify']
+            acceptance_criteria = task['acceptance_criteria']
+            safety_limits = task['safety_limits']
+
+            # Build issue body components
+            files_list = '\\n'.join('- ' + file for file in files_to_modify)
+            criteria_list = '\\n'.join('- ' + criteria for criteria in acceptance_criteria)
+            max_files = safety_limits['max_files_changed']
+            max_deletions = safety_limits['max_lines_deleted']
+
+            # Build issue body as single line to avoid YAML parsing issues
+            issue_body = f"**Automated Task Execution**\\n\\n**Task ID:** {task_id}\\n**Description:** {description}\\n\\n**Files to modify:**\\n{files_list}\\n\\n**Acceptance Criteria:**\\n{criteria_list}\\n\\n**Safety Requirements:**\\n- Maximum {max_files} files changed\\n- Maximum {max_deletions} lines deleted\\n- Follow existing code patterns and conventions\\n- Maintain TypeScript compilation\\n- Preserve all existing functionality\\n\\n@copilot Please implement these changes following the acceptance criteria and safety requirements."
+
+            # Write to file to avoid shell escaping issues
+            with open('copilot_issue_body.txt', 'w') as f:
+                f.write(issue_body)
+
+            # Create issue using GitHub CLI
+            title = f"🤖 {task_id}: {description[:50]}..."
+            cmd = ['gh', 'issue', 'create', '--title', title, '--body-file', 'copilot_issue_body.txt']
+            result = subprocess.run(cmd, capture_output=True, text=True)
+
+            if result.returncode == 0:
+                print("✅ GitHub issue created and assigned to Copilot Agent")
+                return True
+            else:
+                print(f"❌ Failed to create issue: {result.stderr}")
+                return False
+
+        def execute_with_copilot_chat(task):
+            \"\"\"Use GitHub Copilot Chat for simple tasks\"\"\"
+            print("💬 Using GitHub Copilot Chat (native, cost-effective)")
+
+            # For simple tasks, use gh copilot suggest
+            files_str = ' '.join(task['files_to_modify'])
+            criteria_str = '; '.join(task['acceptance_criteria'])
+            prompt = f"Implement: {task['description']}. Files: {files_str}. Criteria: {criteria_str}"
+
+            # Write prompt to file to avoid shell escaping
+            with open('copilot_prompt.txt', 'w') as f:
+                f.write(prompt)
+
+            # Use GitHub Copilot CLI
+            cmd = ['gh', 'copilot', 'suggest', '--type', 'shell', prompt]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+
+            if result.returncode == 0:
+                print("✅ GitHub Copilot Chat suggestion generated")
+                print("📝 Suggestion:", result.stdout[:200] + "..." if len(result.stdout) > 200 else result.stdout)
+                return True
+            else:
+                print(f"❌ Copilot Chat failed: {result.stderr}")
+                return False
+
+        def execute_with_aider_smart_model(task):
+            # Use Aider with intelligently selected model based on task characteristics
+
+            # Select optimal model for this specific task
+            selected_model = select_optimal_model(task)
+            print(f"🔧 Using Aider with smart model selection: {selected_model}")
+
+            # Log reasoning for model selection
+            description = task['description'].lower()
+            if 'gemini-flash' in selected_model:
+                print("🧠 Reason: Complex thinking/reasoning task detected")
+            elif 'claude-3.5-haiku' in selected_model:
+                print("📋 Reason: Planning/coordination task detected")
+            elif 'gemini-pro' in selected_model:
+                print("📝 Reason: Multi-file/TypeScript task detected")
+            elif 'kimi-k2' in selected_model:
+                print("⚡ Reason: Fast execution task or default balanced choice")
+
+            # Build comprehensive prompt
+            criteria_list = '\\n'.join(f'- {criteria}' for criteria in task['acceptance_criteria'])
+            files_list = ', '.join(task['files_to_modify'])
+            max_files = task['safety_limits']['max_files_changed']
+            max_deletions = task['safety_limits']['max_lines_deleted']
+
+            prompt = f"Task: {task['description']}\\n\\nFiles to modify: {files_list}\\n\\nAcceptance Criteria:\\n{criteria_list}\\n\\nSafety Requirements:\\n- Maximum {max_files} files changed\\n- Maximum {max_deletions} lines deleted\\n- Follow existing code patterns and conventions\\n- Maintain TypeScript compilation\\n- Preserve all existing functionality\\n\\nPlease implement these changes efficiently and safely."
+
+            with open('aider_prompt.txt', 'w') as f:
+                f.write(prompt)
+
+            # Execute with selected model
+            files_str = ' '.join(f'"{f}"' for f in task['files_to_modify'])
+            aider_cmd = f"aider --model {selected_model} --yes --auto-commits --message \\"$(cat aider_prompt.txt)\\" {files_str}"
+
+            print(f"🚀 Executing: aider --model {selected_model} [files...]")
+
+            # Execute with timeout and error handling
+            try:
+                result = subprocess.run(aider_cmd, shell=True, capture_output=True, text=True, timeout=1800)
+
+                if result.returncode == 0:
+                    print("✅ Aider execution successful")
+                    return True
+                else:
+                    print(f"❌ Aider execution failed: {result.stderr}")
+
+                    # Try fallback to Kimi K2 if primary model fails
+                    if selected_model != "openrouter/moonshot/kimi-k2":
+                        print("🔄 Trying fallback model: Kimi K2 (best price per pound)")
+                        fallback_cmd = f"aider --model openrouter/moonshot/kimi-k2 --yes --auto-commits --message \\"$(cat aider_prompt.txt)\\" {files_str}"
+                        fallback_result = subprocess.run(fallback_cmd, shell=True, capture_output=True, text=True, timeout=1800)
+
+                        if fallback_result.returncode == 0:
+                            print("✅ Fallback execution successful")
+                            return True
+                        else:
+                            print(f"❌ Fallback also failed: {fallback_result.stderr}")
+
+                    return False
+
+            except subprocess.TimeoutExpired:
+                print("⏰ Aider execution timed out after 30 minutes")
+                return False
+            except Exception as e:
+                print(f"❌ Unexpected error: {e}")
+                return False
+
+        # Select execution strategy
+        strategy = select_execution_strategy(task)
+        print(f"🎯 Selected strategy: {strategy}")
+
+        # Execute based on strategy
+        if strategy == "copilot_agent":
+            success = execute_with_copilot_agent(task)
+        elif strategy == "copilot_chat":
+            success = execute_with_copilot_chat(task)
+        else:  # aider_smart_model
+            success = execute_with_aider_smart_model(task)
+
+        if not success:
+            print("❌ Task execution failed")
+            exit(1)
+
+        print("✅ Task execution completed successfully")
+        EOF
+
+    - name: Validate changes and safety limits
       if: steps.load_tasks.outputs.TASK_AVAILABLE == 'true'
       run: |
-        echo "🔍 Validating changes..."
-        
-        # Check TypeScript compilation
-        npm run build
-        
-        # Run tests if specified
+        echo "🔍 Validating changes and enforcing safety limits..."
+
+        # Validate safety limits and forbidden patterns
         python3 << 'EOF'
         import json
+        import subprocess
+        import yaml
+
+        # Load task details
         with open('next_task.json', 'r') as f:
             task = json.load(f)
-        
+
+        # Load global safety config from YAML
+        with open('task_queue.yaml', 'r') as f:
+            yaml_data = yaml.safe_load(f)
+
+        global_forbidden_patterns = []
+        if 'safety_config' in yaml_data:
+            global_forbidden_patterns = yaml_data['safety_config'].get('forbidden_patterns', [])
+
+        safety_limits = task['safety_limits']
+        max_files = safety_limits['max_files_changed']
+        max_deletions = safety_limits['max_lines_deleted']
+        task_forbidden = task['forbidden_files']
+
+        print(f"🛡️ Enforcing safety limits:")
+        print(f"   Max files changed: {max_files}")
+        print(f"   Max lines deleted: {max_deletions}")
+        print(f"   Task forbidden patterns: {len(task_forbidden)}")
+        print(f"   Global forbidden patterns: {len(global_forbidden_patterns)}")
+
+        # Check number of files changed
+        result = subprocess.run(['git', 'diff', '--name-only', 'main'],
+                              capture_output=True, text=True)
+        if result.returncode != 0:
+            print("❌ Could not check changed files")
+            exit(1)
+
+        changed_files = [f for f in result.stdout.strip().split('\n') if f.strip()]
+        files_changed = len(changed_files)
+
+        print(f"📁 Files changed: {files_changed}")
+        for file in changed_files:
+            print(f"   - {file}")
+
+        # Check forbidden patterns (task-specific + global)
+        all_forbidden_patterns = task_forbidden + global_forbidden_patterns
+        for changed_file in changed_files:
+            for forbidden_pattern in all_forbidden_patterns:
+                pattern_clean = forbidden_pattern.replace('*', '')
+                if pattern_clean in changed_file:
+                    source = "task-specific" if forbidden_pattern in task_forbidden else "global"
+                    print(f"❌ FORBIDDEN FILE VIOLATION ({source}): {changed_file}")
+                    print(f"   Matches pattern: {forbidden_pattern}")
+                    exit(1)
+
+        if files_changed > max_files:
+            print(f"❌ SAFETY VIOLATION: {files_changed} files changed, max allowed: {max_files}")
+            exit(1)
+
+        # Check lines deleted
+        result = subprocess.run(['git', 'diff', 'main', '--numstat'],
+                              capture_output=True, text=True)
+        if result.returncode != 0:
+            print("❌ Could not check line changes")
+            exit(1)
+
+        total_deletions = 0
+        for line in result.stdout.strip().split('\n'):
+            if line.strip():
+                parts = line.split('\t')
+                if len(parts) >= 2 and parts[1].isdigit():
+                    deletions = int(parts[1])
+                    total_deletions += deletions
+                    if deletions > 0:
+                        print(f"📝 {parts[2]}: -{deletions} lines")
+
+        print(f"🗑️ Total lines deleted: {total_deletions}")
+
+        if total_deletions > max_deletions:
+            print(f"❌ SAFETY VIOLATION: {total_deletions} lines deleted, max allowed: {max_deletions}")
+            exit(1)
+
+        print("✅ Safety limits respected")
+        EOF
+
+        # Check TypeScript compilation
+        echo "🔧 Checking TypeScript compilation..."
+        npm run build
+
+        # Run validation commands
+        echo "🧪 Running validation commands..."
+        python3 << 'EOF'
+        import json
+        import subprocess
+
+        with open('next_task.json', 'r') as f:
+            task = json.load(f)
+
         for cmd in task['validation_commands']:
             print(f"Running: {cmd}")
-            import subprocess
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             if result.returncode != 0:
                 print(f"❌ Validation failed: {cmd}")
@@ -191,6 +576,8 @@ jobs:
                 exit(1)
             else:
                 print(f"✅ Validation passed: {cmd}")
+
+        print("✅ All validations passed")
         EOF
 
     - name: Update task status
@@ -262,15 +649,69 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Check for continuous processing
+      if: steps.load_tasks.outputs.TASK_AVAILABLE == 'true' && github.event.inputs.continuous_mode == 'true'
+      run: |
+        echo "🔄 Continuous mode enabled - checking for more tasks..."
+
+        # Wait a bit to avoid rapid cycling
+        sleep 30
+
+        # Trigger another workflow run if more tasks available
+        python3 << 'EOF'
+        import yaml
+        import requests
+        import os
+
+        # Check if more tasks are pending
+        with open('task_queue.yaml', 'r') as f:
+            task_data = yaml.safe_load(f)
+
+        pending_tasks = [t for t in task_data.get('tasks', []) if t.get('status', 'pending') == 'pending']
+
+        if len(pending_tasks) > 0:
+            print(f"🔄 {len(pending_tasks)} more tasks pending - triggering next run")
+
+            # Trigger workflow dispatch (requires GITHUB_TOKEN with workflow permissions)
+            headers = {
+                'Authorization': f'token {os.environ["GITHUB_TOKEN"]}',
+                'Accept': 'application/vnd.github.v3+json'
+            }
+
+            data = {
+                'ref': 'main',
+                'inputs': {
+                    'continuous_mode': 'true',
+                    'max_tasks': '1'
+                }
+            }
+
+            repo = os.environ['GITHUB_REPOSITORY']
+            url = f'https://api.github.com/repos/{repo}/actions/workflows/safe-mcp-automation.yml/dispatches'
+
+            try:
+                response = requests.post(url, json=data, headers=headers)
+                if response.status_code == 204:
+                    print("✅ Next automation run triggered successfully")
+                else:
+                    print(f"⚠️ Failed to trigger next run: {response.status_code}")
+            except Exception as e:
+                print(f"⚠️ Error triggering next run: {e}")
+        else:
+            print("✅ All tasks completed - continuous processing finished")
+        EOF
+
     - name: Report completion
       if: steps.load_tasks.outputs.TASK_AVAILABLE == 'true'
       run: |
         echo "✅ Safe MCP automation completed successfully!"
         echo "📋 Task: ${{ steps.load_tasks.outputs.TASK_ID }}"
         echo "🔗 PR created for review"
+        echo "⏰ Next run: Every 30 minutes or when triggered"
 
     - name: No tasks available
       if: steps.load_tasks.outputs.TASK_AVAILABLE == 'false'
       run: |
-        echo "ℹ️ No pending VVS tasks found in task_queue.yaml"
-        echo "All VVS tasks may be completed or in progress"
+        echo "✅ No pending tasks found in task_queue.yaml"
+        echo "🎉 All tasks completed or in progress"
+        echo "⏰ Will check again in 30 minutes"

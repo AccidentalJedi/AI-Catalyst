@@ -12,6 +12,7 @@ import sys
 import json
 import time
 import threading
+import shutil
 import yaml
 from pathlib import Path
 from datetime import datetime
@@ -60,7 +61,16 @@ class AlternatingAIController:
         self.is_running = False
         self.progress_file = self.project_root / "ai_agent_progress.json"
         self.log_file = self.project_root / "ai_agent_log.txt"
-        
+
+        # Safety configuration from YAML
+        self.global_safety_config = {}
+        self.global_forbidden_patterns = []
+
+        # Execution rules from YAML
+        self.execution_rules = {}
+        self.priority_order = ["high", "medium", "low"]  # Default
+        self.vvs_priority = True  # Default
+
         # Load existing progress if available
         self.load_progress()
 
@@ -138,7 +148,11 @@ class AlternatingAIController:
             return False, f"Semantic validation error: {str(e)}"
 
     def _simulate_semantic_check(self, task: Task, changed_files: List[str]) -> bool:
-        """Simulate semantic validation (replace with actual AI call)."""
+        """Simulate semantic validation with safety limit enforcement."""
+        # Enforce safety limits first
+        if not self._enforce_safety_limits(task, changed_files):
+            return False
+
         # Check if expected files were modified
         for expected_file in task.files_to_modify:
             if expected_file.endswith('*'):
@@ -151,33 +165,114 @@ class AlternatingAIController:
                     self.log(f"❌ Expected file not modified: {expected_file}")
                     return False
 
-        # Check if forbidden files were modified
+        # Check if forbidden files were modified (task-specific + global)
+        all_forbidden_patterns = task.forbidden_files + self.global_forbidden_patterns
         for changed_file in changed_files:
-            for forbidden_pattern in task.forbidden_files:
-                if forbidden_pattern.replace('*', '') in changed_file:
-                    self.log(f"❌ Forbidden file modified: {changed_file}")
+            for forbidden_pattern in all_forbidden_patterns:
+                pattern_clean = forbidden_pattern.replace('*', '')
+                if pattern_clean in changed_file:
+                    source = "task-specific" if forbidden_pattern in task.forbidden_files else "global"
+                    self.log(f"❌ Forbidden file modified ({source}): {changed_file}")
                     return False
 
         self.log("✅ Semantic validation passed")
         return True
 
-    def load_tier1_tasks(self) -> None:
-        """Load Tier 1 tasks from task_queue.yaml"""
+    def _enforce_safety_limits(self, task: Task, changed_files: List[str]) -> bool:
+        """Enforce safety limits from task definition."""
         try:
+            safety_limits = task.safety_limits
+            max_files = safety_limits.get('max_files_changed', 999)
+            max_deletions = safety_limits.get('max_lines_deleted', 999)
+
+            self.log(f"🛡️ Enforcing safety limits:")
+            self.log(f"   Max files changed: {max_files}")
+            self.log(f"   Max lines deleted: {max_deletions}")
+
+            # Check number of files changed
+            files_changed = len(changed_files)
+            self.log(f"📁 Files changed: {files_changed}")
+            for file in changed_files:
+                self.log(f"   - {file}")
+
+            if files_changed > max_files:
+                self.log(f"❌ SAFETY VIOLATION: {files_changed} files changed, max allowed: {max_files}")
+                return False
+
+            # Check lines deleted
+            diff_result = subprocess.run(
+                ["git", "diff", "main", "--numstat"],
+                cwd=self.project_root, capture_output=True, text=True
+            )
+
+            if diff_result.returncode != 0:
+                self.log("❌ Could not check line changes for safety validation")
+                return False
+
+            total_deletions = 0
+            for line in diff_result.stdout.strip().split('\n'):
+                if line.strip():
+                    parts = line.split('\t')
+                    if len(parts) >= 2 and parts[1].isdigit():
+                        deletions = int(parts[1])
+                        total_deletions += deletions
+                        if deletions > 0:
+                            self.log(f"📝 {parts[2]}: -{deletions} lines")
+
+            self.log(f"🗑️ Total lines deleted: {total_deletions}")
+
+            if total_deletions > max_deletions:
+                self.log(f"❌ SAFETY VIOLATION: {total_deletions} lines deleted, max allowed: {max_deletions}")
+                return False
+
+            self.log("✅ Safety limits respected")
+            return True
+
+        except Exception as e:
+            self.log(f"❌ Error enforcing safety limits: {str(e)}")
+            return False
+
+    def load_tier1_tasks(self) -> None:
+        """Load Tier 1 tasks from task_queue.yaml with comprehensive validation and error recovery."""
+        try:
+            # Validate file existence and accessibility
             task_file = self.project_root / "task_queue.yaml"
             if not task_file.exists():
                 self.log("❌ task_queue.yaml not found, falling back to empty task queue")
+                self._create_backup_task_queue()
                 return
 
-            with open(task_file, 'r') as f:
-                task_data = yaml.safe_load(f)
-
-            if not task_data or 'tasks' not in task_data:
-                self.log("❌ Invalid YAML structure: missing 'tasks' section")
+            # Validate file is readable and not empty
+            try:
+                file_size = task_file.stat().st_size
+                if file_size == 0:
+                    self.log("❌ task_queue.yaml is empty")
+                    self._handle_corrupted_yaml("Empty file")
+                    return
+                elif file_size > 10 * 1024 * 1024:  # 10MB limit
+                    self.log("❌ task_queue.yaml is too large (>10MB)")
+                    return
+            except OSError as e:
+                self.log(f"❌ Cannot access task_queue.yaml: {str(e)}")
                 return
 
+            # Parse YAML with comprehensive error handling
+            task_data = self._parse_yaml_safely(task_file)
+            if task_data is None:
+                return
+
+            # Validate YAML structure
+            validation_result = self._validate_yaml_structure(task_data)
+            if not validation_result['valid']:
+                self.log(f"❌ Invalid YAML structure: {validation_result['error']}")
+                self._handle_corrupted_yaml(validation_result['error'])
+                return
+
+            # Load and validate individual tasks
             loaded_tasks = []
-            for task_dict in task_data.get('tasks', []):
+            failed_tasks = []
+
+            for i, task_dict in enumerate(task_data.get('tasks', [])):
                 try:
                     # Validate and map task from YAML to Task dataclass
                     task = self._validate_and_map_task(task_dict)
@@ -185,20 +280,33 @@ class AlternatingAIController:
                     self.log(f"✅ Loaded task: {task.taskId} - {task.description[:50]}...")
 
                 except Exception as e:
-                    self.log(f"❌ Failed to load task {task_dict.get('taskId', 'unknown')}: {str(e)}")
+                    task_id = task_dict.get('taskId', f'task-{i+1}')
+                    error_msg = str(e)
+                    failed_tasks.append({'taskId': task_id, 'error': error_msg})
+                    self.log(f"❌ Failed to load task {task_id}: {error_msg}")
                     continue
 
+            # Load global safety configuration
+            self._load_global_safety_config(task_data)
+
+            # Report loading summary
+            self._report_loading_summary(loaded_tasks, failed_tasks, task_data)
+
             # Add loaded tasks to queue, filtering out already completed ones
+            added_count = 0
             for task in loaded_tasks:
                 if not any(t.taskId == task.taskId and t.status == TaskStatus.COMPLETED for t in self.completed_tasks):
                     self.task_queue.append(task)
+                    added_count += 1
 
-            self.log(f"✅ Successfully loaded {len(self.task_queue)} tasks from YAML")
+            self.log(f"✅ Successfully loaded {len(loaded_tasks)} tasks, added {added_count} to queue")
 
         except yaml.YAMLError as e:
             self.log(f"❌ YAML parsing error: {str(e)}")
+            self._handle_corrupted_yaml(f"YAML syntax error: {str(e)}")
         except Exception as e:
-            self.log(f"❌ Error loading tasks from YAML: {str(e)}")
+            self.log(f"❌ Unexpected error loading tasks from YAML: {str(e)}")
+            self._handle_corrupted_yaml(f"Unexpected error: {str(e)}")
 
     def _validate_and_map_task(self, task_dict: Dict) -> Task:
         """Validate and map YAML task dictionary to Task dataclass with comprehensive field validation."""
@@ -298,6 +406,179 @@ class AlternatingAIController:
             raise ValueError("acceptance_criteria cannot be empty")
         if not task_dict['validation_commands']:
             raise ValueError("validation_commands cannot be empty")
+
+    def _parse_yaml_safely(self, task_file: Path) -> Optional[Dict]:
+        """Parse YAML file with comprehensive error handling."""
+        try:
+            with open(task_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Check for common YAML issues
+            if not content.strip():
+                self.log("❌ YAML file is empty")
+                return None
+
+            # Attempt to parse YAML
+            task_data = yaml.safe_load(content)
+
+            if task_data is None:
+                self.log("❌ YAML file contains only null/empty content")
+                return None
+
+            return task_data
+
+        except yaml.scanner.ScannerError as e:
+            self.log(f"❌ YAML syntax error: {str(e)}")
+            self._suggest_yaml_fix(str(e))
+            return None
+        except yaml.parser.ParserError as e:
+            self.log(f"❌ YAML structure error: {str(e)}")
+            self._suggest_yaml_fix(str(e))
+            return None
+        except UnicodeDecodeError as e:
+            self.log(f"❌ File encoding error: {str(e)}")
+            self.log("💡 Try saving task_queue.yaml with UTF-8 encoding")
+            return None
+        except Exception as e:
+            self.log(f"❌ Unexpected error reading YAML: {str(e)}")
+            return None
+
+    def _validate_yaml_structure(self, task_data: Dict) -> Dict[str, any]:
+        """Validate the overall structure of the YAML data."""
+        if not isinstance(task_data, dict):
+            return {'valid': False, 'error': 'Root element must be a dictionary'}
+
+        # Check for required top-level sections
+        if 'tasks' not in task_data:
+            return {'valid': False, 'error': 'Missing required "tasks" section'}
+
+        if not isinstance(task_data['tasks'], list):
+            return {'valid': False, 'error': '"tasks" must be a list'}
+
+        if len(task_data['tasks']) == 0:
+            return {'valid': False, 'error': '"tasks" list is empty'}
+
+        # Validate optional sections
+        optional_sections = ['execution_rules', 'safety_config', 'validation_config']
+        for section in optional_sections:
+            if section in task_data and not isinstance(task_data[section], dict):
+                return {'valid': False, 'error': f'"{section}" must be a dictionary'}
+
+        return {'valid': True, 'error': None}
+
+    def _report_loading_summary(self, loaded_tasks: List[Task], failed_tasks: List[Dict], task_data: Dict) -> None:
+        """Report comprehensive summary of task loading results."""
+        total_tasks = len(task_data.get('tasks', []))
+        success_count = len(loaded_tasks)
+        failure_count = len(failed_tasks)
+
+        self.log(f"📊 Task Loading Summary:")
+        self.log(f"   Total tasks in YAML: {total_tasks}")
+        self.log(f"   Successfully loaded: {success_count}")
+        self.log(f"   Failed to load: {failure_count}")
+
+        if failed_tasks:
+            self.log("❌ Failed tasks:")
+            for failed in failed_tasks[:5]:  # Show first 5 failures
+                self.log(f"   - {failed['taskId']}: {failed['error']}")
+            if len(failed_tasks) > 5:
+                self.log(f"   ... and {len(failed_tasks) - 5} more failures")
+
+        # Report task type breakdown
+        vvs_tasks = [t for t in loaded_tasks if t.taskId.startswith('T1-VVS')]
+        frontend_tasks = [t for t in loaded_tasks if not t.taskId.startswith('T1-VVS')]
+
+        self.log(f"📋 Task breakdown:")
+        self.log(f"   VVS enhancement tasks: {len(vvs_tasks)}")
+        self.log(f"   Frontend enhancement tasks: {len(frontend_tasks)}")
+
+    def _suggest_yaml_fix(self, error_msg: str) -> None:
+        """Suggest fixes for common YAML errors."""
+        suggestions = []
+
+        if "found character '\\t'" in error_msg:
+            suggestions.append("💡 Replace tabs with spaces (YAML doesn't allow tabs)")
+        if "could not find expected" in error_msg:
+            suggestions.append("💡 Check for missing quotes around strings with special characters")
+        if "mapping values are not allowed" in error_msg:
+            suggestions.append("💡 Check for missing colons (:) after dictionary keys")
+        if "found undefined alias" in error_msg:
+            suggestions.append("💡 Check for typos in YAML anchors and references")
+
+        for suggestion in suggestions:
+            self.log(suggestion)
+
+    def _handle_corrupted_yaml(self, error_reason: str) -> None:
+        """Handle corrupted or invalid YAML files."""
+        self.log(f"🚨 YAML file appears corrupted: {error_reason}")
+        self.log("🔧 Recovery options:")
+        self.log("   1. Check task_queue.yaml syntax with a YAML validator")
+        self.log("   2. Restore from git history: git checkout HEAD~1 task_queue.yaml")
+        self.log("   3. Use backup if available")
+
+        # Try to create a backup of the current file for analysis
+        try:
+            backup_file = self.project_root / f"task_queue_corrupted_{int(time.time())}.yaml"
+            shutil.copy2(self.project_root / "task_queue.yaml", backup_file)
+            self.log(f"📁 Corrupted file backed up to: {backup_file}")
+        except Exception:
+            pass
+
+    def _create_backup_task_queue(self) -> None:
+        """Create a minimal backup task queue if none exists."""
+        self.log("🔧 Creating minimal backup task queue...")
+
+        backup_content = """# AI Catalyst - Backup Task Queue
+# This is a minimal backup created when task_queue.yaml was not found
+
+version: "2.1"
+metadata:
+  created: "auto-generated"
+  description: "Backup task queue - please restore original task_queue.yaml"
+
+tasks: []
+
+execution_rules:
+  max_concurrent_tasks: 1
+  delay_between_tasks: 300
+  max_retries: 2
+  timeout_minutes: 45
+
+safety_config:
+  require_git_branch: true
+  require_backup: true
+  require_validation: true
+"""
+
+        try:
+            backup_file = self.project_root / "task_queue_backup.yaml"
+            with open(backup_file, 'w') as f:
+                f.write(backup_content)
+            self.log(f"✅ Backup task queue created: {backup_file}")
+        except Exception as e:
+            self.log(f"❌ Failed to create backup: {str(e)}")
+
+    def _load_global_safety_config(self, task_data: Dict) -> None:
+        """Load global safety configuration from YAML."""
+        try:
+            # Load safety_config section
+            if 'safety_config' in task_data:
+                self.global_safety_config = task_data['safety_config']
+                self.global_forbidden_patterns = self.global_safety_config.get('forbidden_patterns', [])
+
+                self.log(f"🛡️ Loaded global safety config:")
+                self.log(f"   Require git branch: {self.global_safety_config.get('require_git_branch', False)}")
+                self.log(f"   Require backup: {self.global_safety_config.get('require_backup', False)}")
+                self.log(f"   Require validation: {self.global_safety_config.get('require_validation', False)}")
+                self.log(f"   Forbidden patterns: {len(self.global_forbidden_patterns)} patterns")
+
+                for pattern in self.global_forbidden_patterns:
+                    self.log(f"     - {pattern}")
+            else:
+                self.log("⚠️ No global safety_config found in YAML")
+
+        except Exception as e:
+            self.log(f"❌ Error loading global safety config: {str(e)}")
 
     def get_next_agent(self) -> AgentType:
         """Alternate between agents for task distribution."""

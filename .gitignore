@@ -349,4 +349,28 @@ models/
 *.safetensors
 *.gguf
 
+# ============================================================================
+# 24/7 AUTOMATION SYSTEM FILES
+# ============================================================================
+
+# Aider automation temporary files
+aider_prompt.txt
+copilot_prompt.txt
+copilot_issue_body.txt
+issue_body.txt
+next_task.json
+
+# GitHub Actions temporary files
+task_execution_log.txt
+automation_state.json
+
+# OpenRouter API keys and model configurations (if local)
+openrouter_key.txt
+model_config_local.json
+
+# Safe MCP execution logs and snapshots
+safe_mcp_snapshots/
+execution_logs/
+task_results/
+
 # End of .gitignore

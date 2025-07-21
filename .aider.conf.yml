@@ -1,0 +1,49 @@
+# AI Catalyst - Aider Configuration for 24/7 Automation
+# Optimized settings for continuous automated operation
+
+# Automation Settings
+auto-commits: true          # Automatically commit changes
+auto-test: false           # Skip automatic testing (we handle this separately)
+check-update: false        # Don't check for updates during automation
+dirty-commits: true        # Allow commits even with uncommitted changes
+pretty: false             # Disable pretty output for automation
+stream: false             # Disable streaming for cleaner logs
+show-diffs: false         # Don't show diffs in automation mode
+
+# Performance Settings
+map-tokens: 1024          # Reasonable repo map size
+cache-prompts: true       # Enable prompt caching for efficiency
+max-chat-history-tokens: 4096  # Limit chat history for cost control
+
+# Safety Settings
+lint: false              # We handle linting in validation step
+test-cmd: ""            # We handle testing in validation step
+commit-prompt: false    # Don't prompt for commit messages
+
+# Model Settings (defaults, can be overridden)
+model: openrouter/deepseek/deepseek-chat  # Default cost-effective model
+weak-model: openrouter/openai/gpt-3.5-turbo  # For simple tasks
+
+# Git Settings
+git-diffs: true         # Show git diffs
+gitignore: true        # Respect .gitignore
+
+# Output Settings
+verbose: false         # Reduce verbosity for automation
+no-pretty: true       # Disable pretty printing
+dark-mode: false      # Consistent output formatting
+
+# Editor Settings
+editor-model: openrouter/deepseek/deepseek-chat  # Cost-effective for editing
+editor-edit-format: diff  # Use diff format for edits
+
+# Advanced Settings
+restore-chat-history: false  # Don't restore chat history in automation
+analytics: false            # Disable analytics for automation
+check-update: false        # Don't check for updates
+upgrade: false            # Don't auto-upgrade
+
+# Rate Limiting (handled in workflow)
+# These are backup settings if workflow rate limiting fails
+retry-delay: 60           # Wait 60 seconds between retries
+max-retries: 3           # Maximum retry attempts

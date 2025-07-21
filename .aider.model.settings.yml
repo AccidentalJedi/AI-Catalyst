@@ -1,0 +1,65 @@
+# AI Catalyst - Clean 3-Tier Model Strategy (2025)
+# No overlap, clear roles, maximum efficiency
+
+# Kimi K2 - Best price per pound workhorse (as you recommended)
+- name: openrouter/moonshot/kimi-k2
+  extra_params:
+    extra_body:
+      provider:
+        order: ["Moonshot"]
+        allow_fallbacks: true
+        data_collection: "deny"
+        require_parameters: false
+  # Use for: Default choice, simple tasks, UI changes, single files, fast execution
+
+# Claude Sonnet 4 - Premium efficiency for medium complexity
+- name: openrouter/anthropic/claude-sonnet-4
+  extra_params:
+    extra_body:
+      provider:
+        order: ["Anthropic", "Together"]
+        allow_fallbacks: true
+        data_collection: "deny"
+        require_parameters: false
+  # Use for: Multi-file tasks, planning, coordination, data-heavy work
+
+# Gemini 2.5 Pro - Heavy muscle for complex thinking
+- name: openrouter/google/gemini-2.5-pro
+  extra_params:
+    extra_body:
+      provider:
+        order: ["Google"]
+        allow_fallbacks: true
+        data_collection: "deny"
+        require_parameters: false
+  # Use for: Complex reasoning, architecture, algorithm design, heavy lifting
+
+# Claude 3.5 Sonnet - Premium quality for complex VVS tasks (GitHub Copilot handles most)
+- name: openrouter/anthropic/claude-3.5-sonnet
+  extra_params:
+    extra_body:
+      provider:
+        order: ["Anthropic", "Together"]
+        allow_fallbacks: true
+        data_collection: "deny"
+        require_parameters: false
+  # Use for: Backup for GitHub Copilot failures, extremely complex tasks
+
+# DeepSeek Chat - Backup cost-effective option
+- name: openrouter/deepseek/deepseek-chat
+  extra_params:
+    extra_body:
+      provider:
+        order: ["DeepSeek"]
+        allow_fallbacks: true
+        data_collection: "deny"
+        require_parameters: false
+  # Use for: Fallback option, simple tasks when others fail
+
+# Clean 3-Tier Strategy - No CEO Overlap (2025):
+# 1. HEAVY MUSCLE: Gemini 2.5 Pro (complex thinking, architecture, algorithms)
+# 2. PREMIUM EFFICIENCY: Claude Sonnet 4 (multi-file, planning, coordination)
+# 3. WORKHORSE: Kimi K2 (default, simple tasks, best price per pound)
+# 4. Fallback Chain: Primary → Kimi K2 → Claude Sonnet 4
+# 5. GitHub Copilot handles VVS/complex tasks (free, high quality)
+# 6. Clear roles, no overlap, maximum efficiency
