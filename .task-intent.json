@@ -1,0 +1,12 @@
+{
+  "task": "--help",
+  "timestamp": "2025-07-21T09:56:36.705691",
+  "expected_files": [
+    "src/"
+  ],
+  "forbidden_files": [
+    "server/src/services/",
+    "server/src/utils/database.ts"
+  ],
+  "snapshot_id": "SAFE-SNAPSHOT-1753109796"
+}
