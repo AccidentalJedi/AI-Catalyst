@@ -1,0 +1,75 @@
+# AI Catalyst Master Control Program - Task Queue
+# 
+# This file contains tasks to be executed sequentially by the MCP system.
+# Each line represents a single task that will be passed to the AI agent.
+#
+# SYNTAX:
+# - One task per line
+# - Lines starting with # are comments (ignored)
+# - Empty lines are ignored
+# - Tasks should be clear, specific, and actionable
+#
+# BEST PRACTICES:
+# - Keep tasks focused and atomic (one clear objective per task)
+# - Use descriptive language that the AI agent can understand
+# - Break complex features into smaller, manageable tasks
+# - Test tasks individually before adding to batch runs
+# - Avoid tasks that require human input or external approvals
+#
+# EXAMPLES:
+# Add user authentication to the login component
+# Fix the TypeScript compilation error in the payment service
+# Update the database schema to include the new user_preferences table
+# Implement error handling for the file upload functionality
+# Add unit tests for the business formation validation logic
+# Refactor the DocuSign integration to use the new API endpoints
+
+# SAMPLE TASKS (uncomment and modify as needed):
+
+# Test task for MCP validation
+Add comprehensive error handling to the document processing pipeline
+
+# Frontend Development Tasks
+# Add loading spinner to the business formation wizard
+# Implement form validation for the veteran verification step
+# Create responsive design for mobile devices
+# Add accessibility features to the main navigation
+
+# Backend Development Tasks  
+# Implement rate limiting for API endpoints
+# Add comprehensive logging to the document generation service
+# Create database migration for the new grant_opportunities table
+# Implement caching for frequently accessed grant data
+
+# Testing and Quality Assurance
+# Add integration tests for the DocuSign workflow
+# Create end-to-end tests for the complete business formation process
+# Add performance tests for the grant discovery algorithm
+# Implement security testing for user authentication
+
+# Documentation and Maintenance
+# Update API documentation with new endpoints
+# Create user guide for the grant discovery feature
+# Add inline code comments for complex business logic
+# Update deployment documentation with new environment variables
+
+# Bug Fixes and Improvements
+# Fix memory leak in the document processing pipeline
+# Optimize database queries for better performance
+# Resolve CORS issues with the frontend-backend communication
+# Fix timezone handling in the compliance deadline tracking
+
+# INSTRUCTIONS FOR USE:
+# 1. Uncomment the tasks you want to execute
+# 2. Modify tasks to match your specific requirements
+# 3. Add new tasks following the format above
+# 4. Run: python mcp_cli.py --task-file tasks.txt --agent aider
+# 5. Monitor the logs for progress and any issues
+#
+# SAFETY NOTES:
+# - All tasks will go through "The Gauntlet" quality checks
+# - Failed quality checks will revert all changes automatically
+# - Each task creates a separate git commit for easy rollback
+# - Use --dry-run to preview what will be executed
+#
+# For more information, see: README-MCP.md
