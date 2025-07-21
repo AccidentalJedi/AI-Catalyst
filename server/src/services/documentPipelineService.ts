@@ -1,11 +1,11 @@
 import crypto from 'crypto';
 import { dbUtils } from '@utils/database';
-import { logSuccess, logFailure, AuditAction, AuditResource } from '../types/index';
+import { logSuccess, logFailure, AuditAction, AuditResource } from '@utils/audit';
 import { dbLogger } from '@utils/logger';
-import { analyzeDocument } from '../types/index';
-import { updateWizardProgress } from '../types/index';
-import { updateUser } from '../types/index';
-import type { VeteranProfile } from '../types/index';
+import { analyzeDocument } from './documentAnalysisService';
+import { findMatchingGrants, storeGrantMatches } from './grantMatchingService';
+import { updateWizardProgress, getWizardProgress } from './wizardService';
+import { VeteranProfile } from '../types';
 
 // Document processing pipeline
 export interface DocumentProcessingPipeline {
@@ -166,23 +166,22 @@ const performGrantMatching = async (
       }
     }
     
-    // TODO: Implement actual grant matching logic
-    // This would cross-reference extracted data points with grant eligibility criteria
-    
-    const grantMatches = await findMatchingGrants(userId, allDataPoints);
+    const grantMatches = await findMatchingGrantsFromDataPoints(userId, allDataPoints);
     
     // Store cross-references
     for (const match of grantMatches) {
-      await createDocumentCrossReference(
-        documentId,
-        userId,
-        match.dataPointId,
-        'grant_eligibility',
-        'grant_opportunity',
-        match.grantId,
-        match.confidence,
-        match.reason
-      );
+        for (const dataPointId of match.dataPointIds) {
+            await createDocumentCrossReference(
+                documentId,
+                userId,
+                dataPointId,
+                'grant_eligibility',
+                'grant_opportunity',
+                match.grantId,
+                match.confidence,
+                match.reason
+              );
+        }
     }
     
     return grantMatches;
@@ -297,20 +296,20 @@ const integrateWithWizardProgress = async (
 ): Promise<void> => {
   try {
     // Check if document analysis step should be marked as complete
-    const hasAnalysisResults = analysisResults.some(r => r.analysisStatus === 'completed');
+    const hasAnalysisResults = analysisResults.some(r => r.id);
     
     if (hasAnalysisResults) {
+        const progress = await getWizardProgress(userId);
       await updateWizardProgress(userId, {
         stepData: {
-          stepId: 'document_analysis',
-          data: {
+          ...(progress?.stepData || {}),
+          document_analysis: {
             documentId,
             analysisCompleted: true,
             resultsCount: analysisResults.length
           },
-          isComplete: true,
-          completedAt: new Date()
-        }
+        },
+        completedSteps: [...(progress?.completedSteps || []), 'document_analysis'],
       });
     }
     
@@ -334,12 +333,8 @@ const integrateWithWizardProgress = async (
 /**
  * Find matching grants based on data points
  */
-const findMatchingGrants = async (userId: string, dataPoints: any[]): Promise<any[]> => {
+const findMatchingGrantsFromDataPoints = async (userId: string, dataPoints: any[]): Promise<any[]> => {
   try {
-    // Import the grant matching service
-    const { findMatchingGrants: performGrantMatching, storeGrantMatches } =
-      await import('./grantMatchingService.js');
-
     // Get user profile from database
     const user = dbUtils.get(`
       SELECT u.*, vv.*
@@ -375,7 +370,7 @@ const findMatchingGrants = async (userId: string, dataPoints: any[]): Promise<an
     };
 
     // Perform grant matching
-    const matches = await performGrantMatching(veteranProfile);
+    const matches = await findMatchingGrants(veteranProfile);
 
     // Store matches in database
     await storeGrantMatches(userId, matches);
@@ -386,7 +381,10 @@ const findMatchingGrants = async (userId: string, dataPoints: any[]): Promise<an
       extractedNeeds: extractedNeeds.length
     });
 
-    return matches;
+    return matches.map(match => ({
+        ...match,
+        dataPointIds: dataPoints.map(dp => dp.id)
+    }));
 
   } catch (error) {
     dbLogger.error('Grant matching from documents failed:', {
@@ -503,6 +501,3 @@ const createDocumentCrossReference = async (
     });
   }
 };
-
-
-

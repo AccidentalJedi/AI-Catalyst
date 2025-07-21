@@ -72,7 +72,7 @@ module.exports = {
   // Transform configuration
   transform: {
     '^.+\\.ts$': ['ts-jest', {
-      tsconfig: '../tsconfig.json'
+      tsconfig: './tsconfig.json'
     }]
   },
 

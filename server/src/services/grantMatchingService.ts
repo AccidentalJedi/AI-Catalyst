@@ -1,8 +1,9 @@
 import crypto from 'crypto';
 import { dbUtils } from '@utils/database';
 import { dbLogger } from '@utils/logger';
-import { calculateFrictionScore, getApplicationComplexity, getRecommendedApplicationMode } from './frictionScoringService';
-import { VeteranProfile } from '../types/index';
+import { calculateFrictionScore, getRecommendedApplicationMode } from './frictionScoringService';
+import { LLMClassificationService } from './llmClassificationService';
+import { VeteranProfile } from '../types';
 
 // Grant matching interfaces
 
@@ -143,6 +144,7 @@ const performLLMClassification = async (
   candidateGrants: any[]
 ): Promise<GrantMatch[]> => {
   const matches: GrantMatch[] = [];
+  const llmService = LLMClassificationService.getInstance();
   
   for (const grant of candidateGrants) {
     try {
@@ -154,7 +156,30 @@ const performLLMClassification = async (
       
       // Check if grant has complex criteria requiring LLM analysis
       if (grant.otherCriteriaText && grant.otherCriteriaText.trim().length > 0) {
-        const llmResult = await classifyEligibilityWithLLM(profile, grant);
+        const classificationRequest = {
+            veteranProfile: {
+                disabilityRating: profile.disabilityRating,
+                isPermanentAndTotal: profile.isPermanentAndTotal,
+                state: profile.state,
+                county: profile.county,
+                maritalStatus: profile.maritalStatus,
+                hasMinorChildren: profile.hasMinorChildren,
+                annualHouseholdIncome: profile.annualHouseholdIncome,
+                isHomelessOrAtRisk: profile.isHomelessOrAtRisk,
+                serviceEra: profile.serviceEra,
+                branchOfService: profile.branchOfService,
+                dischargeType: profile.dischargeType,
+                needs: profile.needs
+              },
+              grantCriteria: {
+                grantName: grant.grantName,
+                eligibilityCriteria: grant.eligibilityCriteria || '',
+                otherCriteriaText: grant.otherCriteriaText || '',
+                targetPopulation: grant.targetPopulation ? JSON.parse(grant.targetPopulation) : [],
+                residencyRequired: grant.residencyRequired ? JSON.parse(grant.residencyRequired) : []
+              }
+        }
+        const llmResult = await llmService.classifyEligibility(classificationRequest);
         eligibilityStatus = llmResult.classification;
         llmClassification = llmResult.classification;
         llmConfidence = llmResult.confidence;
@@ -273,151 +298,6 @@ const estimateCompletionTime = (frictionScore: number, applicationMode: string):
     if (frictionScore <= 8) return '2-4 weeks';
     return '1-2 months';
   }
-};
-
-/**
- * LLM-powered eligibility classification for complex criteria
- * Integrated with Ollama, LMStudio, and OpenRouter
- */
-const classifyEligibilityWithLLM = async (
-  profile: VeteranProfile,
-  grant: any
-): Promise<{ classification: 'eligible' | 'ineligible' | 'maybe'; confidence: number; reason: string }> => {
-  try {
-    // Import and use the LLM classification service
-    const { LLMClassificationService } = await import('./llmClassificationService');
-    const llmService = LLMClassificationService.getInstance();
-
-    // Prepare classification request
-    const classificationRequest = {
-      veteranProfile: {
-        disabilityRating: profile.disabilityRating,
-        isPermanentAndTotal: profile.isPermanentAndTotal,
-        state: profile.state,
-        county: profile.county,
-        maritalStatus: profile.maritalStatus,
-        hasMinorChildren: profile.hasMinorChildren,
-        annualHouseholdIncome: profile.annualHouseholdIncome,
-        isHomelessOrAtRisk: profile.isHomelessOrAtRisk,
-        serviceEra: profile.serviceEra,
-        branchOfService: profile.branchOfService,
-        dischargeType: profile.dischargeType,
-        needs: profile.needs
-      },
-      grantCriteria: {
-        grantName: grant.grantName,
-        eligibilityCriteria: grant.eligibilityCriteria || '',
-        otherCriteriaText: grant.otherCriteriaText || '',
-        targetPopulation: grant.targetPopulation ? JSON.parse(grant.targetPopulation) : [],
-        residencyRequired: grant.residencyRequired ? JSON.parse(grant.residencyRequired) : []
-      }
-    };
-
-    // Perform LLM classification
-    const result = await llmService.classifyEligibility(classificationRequest);
-
-    dbLogger.info('LLM classification completed', {
-      grantId: grant.id,
-      userId: profile.userId,
-      classification: result.classification,
-      confidence: result.confidence,
-      keyFactors: result.keyFactors?.length || 0
-    });
-
-    return {
-      classification: result.classification,
-      confidence: result.confidence,
-      reason: result.reason
-    };
-
-  } catch (error) {
-    dbLogger.error('LLM classification error:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      grantId: grant.id,
-      userId: profile.userId
-    });
-
-    // Fallback to pattern-based classification
-    return await performPatternBasedClassification(profile, grant);
-  }
-};
-
-/**
- * Construct prompt for LLM eligibility classification
- */
-const constructEligibilityPrompt = (profile: VeteranProfile, grant: any): string => {
-  return `
-Veteran Profile:
-- Disability Rating: ${profile.disabilityRating}%
-- P&T Status: ${profile.isPermanentAndTotal ? 'Yes' : 'No'}
-- Location: ${profile.county}, ${profile.state}
-- Marital Status: ${profile.maritalStatus}
-- Minor Children: ${profile.hasMinorChildren ? 'Yes' : 'No'}
-- Service Era: ${profile.serviceEra}
-- Branch: ${profile.branchOfService}
-- Discharge: ${profile.dischargeType}
-- Income: ${profile.annualHouseholdIncome || 'Not provided'}
-- Homeless/At Risk: ${profile.isHomelessOrAtRisk ? 'Yes' : 'No'}
-- Current Needs: ${profile.needs.join(', ')}
-
-Grant Eligibility Criteria:
-${grant.otherCriteriaText}
-
-Based on the veteran's profile and the grant's eligibility criteria, classify the veteran's eligibility as:
-- "eligible": Clearly meets all requirements
-- "ineligible": Clearly does not meet requirements
-- "maybe": Unclear or requires additional information
-
-Provide a brief reason for your classification.
-  `.trim();
-};
-
-/**
- * Pattern-based classification fallback (temporary until LLM integration)
- */
-const performPatternBasedClassification = async (
-  profile: VeteranProfile,
-  grant: any
-): Promise<{ classification: 'eligible' | 'ineligible' | 'maybe'; confidence: number; reason: string }> => {
-  const criteriaText = grant.otherCriteriaText.toLowerCase();
-
-  // Check for income requirements
-  if (criteriaText.includes('income') && criteriaText.includes('limit')) {
-    if (!profile.annualHouseholdIncome) {
-      return {
-        classification: 'maybe',
-        confidence: 0.6,
-        reason: 'Income verification required'
-      };
-    }
-  }
-
-  // Check for family requirements
-  if (criteriaText.includes('minor children') || criteriaText.includes('dependent')) {
-    if (!profile.hasMinorChildren && criteriaText.includes('must have')) {
-      return {
-        classification: 'ineligible',
-        confidence: 0.8,
-        reason: 'Requires minor children in household'
-      };
-    }
-  }
-
-  // Check for homelessness requirements
-  if (criteriaText.includes('homeless') && !profile.isHomelessOrAtRisk) {
-    return {
-      classification: 'ineligible',
-      confidence: 0.7,
-      reason: 'Requires homeless or at-risk status'
-    };
-  }
-
-  // Default to eligible with moderate confidence
-  return {
-    classification: 'eligible',
-    confidence: 0.7,
-    reason: 'Meets basic criteria, complex requirements need review'
-  };
 };
 
 /**
@@ -651,5 +531,3 @@ export const updateGrantMatchFeedback = async (
     throw error;
   }
 };
-
-

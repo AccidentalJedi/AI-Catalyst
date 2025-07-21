@@ -10,7 +10,7 @@
     "start": "node -r ./dist/module-aliases.js dist/index.js",
     "watch": "tsc --watch",
     "check": "ts-node -r tsconfig-paths/register scripts/check-config.ts",
-    "test": "jest",
+    "test": "jest --config ./jest.config.js",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:docusign": "jest --testPathPatterns=docusignService",
