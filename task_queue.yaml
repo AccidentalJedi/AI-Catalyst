@@ -1,0 +1,388 @@
+# AI Catalyst - Structured Task Queue
+# Machine-readable task definitions for automated AI agents
+
+version: "2.1"
+metadata:
+  created: "2025-07-21"
+  updated: "2025-07-21"
+  description: "CORRECTED VVS enhancement and Tier 1 tasks for automated AI agent processing"
+  safety_level: "tier1"
+  total_tasks: 15
+  vvs_enhancement_tasks: 6
+  frontend_enhancement_tasks: 9
+  mission_critical: "VVS enhancements build on existing infrastructure"
+  anti_regression: "All tasks enhance existing functionality, never replace working code"
+  
+tasks:
+  # VVS Enhancement Tasks (Building on Existing Infrastructure)
+  - taskId: "T1-VVS-001"
+    description: "Enhance VeteranStatusStep.tsx with verification workflow integration"
+    status: "pending"
+    priority: "high"
+    agent_preference: "aider"  # Better for complex component enhancement
+    estimated_duration: "25-35 minutes"
+    files_to_modify:
+      - "src/components/Steps/VeteranStatusStep.tsx"
+    forbidden_files:
+      - "server/src/services/*"
+      - "server/src/utils/database.ts"
+      - "package.json"
+    acceptance_criteria:
+      - "Add verification status display to existing VeteranStatusStep component"
+      - "Integrate with existing form validation and submission"
+      - "Add verification progress indicators"
+      - "Include document upload prompts for verification"
+      - "Maintain all existing veteran data collection functionality"
+      - "Add proper loading states and error handling"
+      - "Ensure accessibility and responsive design"
+    validation_commands:
+      - "npm run build"
+      - "npm run test -- VeteranStatusStep"
+    safety_limits:
+      max_files_changed: 1
+      max_lines_deleted: 25
+
+  - taskId: "T1-VVS-002"
+    description: "Add verification status tracking to existing user profile system"
+    status: "pending"
+    priority: "high"
+    agent_preference: "aider"  # Better for service enhancement
+    estimated_duration: "20-30 minutes"
+    files_to_modify:
+      - "server/src/services/userService.ts"
+    forbidden_files:
+      - "server/src/models/schema.ts"
+      - "server/src/utils/database.ts"
+      - "package.json"
+    acceptance_criteria:
+      - "Enhance existing getUserProfile function to include verification status"
+      - "Add updateVerificationStatus function to existing service"
+      - "Integrate with existing veteran role assignment logic"
+      - "Add proper error handling and audit logging"
+      - "Maintain backward compatibility with existing user operations"
+      - "Include comprehensive TypeScript types"
+    validation_commands:
+      - "npx tsc --noEmit"
+      - "npm run test -- userService"
+    safety_limits:
+      max_files_changed: 1
+      max_lines_deleted: 30
+
+  - taskId: "T1-VVS-003"
+    description: "Enhance existing document processing for veteran verification documents"
+    status: "pending"
+    priority: "medium"
+    agent_preference: "aider"  # Better for enhancing existing services
+    estimated_duration: "20-30 minutes"
+    files_to_modify:
+      - "server/src/services/documentPipelineService.ts"
+    forbidden_files:
+      - "server/src/models/schema.ts"
+      - "server/src/utils/database.ts"
+      - "package.json"
+    acceptance_criteria:
+      - "Enhance existing updateVeteranVerificationFromDocument function"
+      - "Add DD-214 and VA document type detection"
+      - "Improve data extraction for verification purposes"
+      - "Add verification confidence scoring"
+      - "Maintain existing document processing workflow"
+      - "Include proper error handling and logging"
+    validation_commands:
+      - "npm run build"
+      - "npm run test -- documentPipelineService"
+    safety_limits:
+      max_files_changed: 1
+      max_lines_deleted: 25
+
+  - taskId: "T1-VVS-004"
+    description: "Add verification status dashboard to existing user profile components"
+    status: "pending"
+    priority: "medium"
+    agent_preference: "copilot"  # Good for UI component creation
+    estimated_duration: "25-35 minutes"
+    files_to_modify:
+      - "src/components/VerificationStatus/VerificationStatusCard.tsx"
+      - "src/components/VerificationStatus/index.ts"
+    forbidden_files:
+      - "server/src/services/*"
+      - "server/src/utils/database.ts"
+      - "package.json"
+    acceptance_criteria:
+      - "Create new verification status card component"
+      - "Display current verification status and progress"
+      - "Add status badges for different verification states"
+      - "Include next steps and action items"
+      - "Integrate with existing Chakra UI design system"
+      - "Add proper loading states and error handling"
+    validation_commands:
+      - "npm run build"
+      - "npm run test -- VerificationStatusCard"
+    safety_limits:
+      max_files_changed: 2
+      max_lines_deleted: 20
+
+  - taskId: "T1-VVS-005"
+    description: "Add tier-based access control to existing business formation workflow"
+    status: "pending"
+    priority: "high"
+    agent_preference: "aider"  # Better for business logic enhancement
+    estimated_duration: "25-35 minutes"
+    files_to_modify:
+      - "server/src/services/businessFormationService.ts"
+    forbidden_files:
+      - "server/src/models/schema.ts"
+      - "server/src/utils/database.ts"
+      - "package.json"
+    acceptance_criteria:
+      - "Enhance existing business formation service with veteran verification checks"
+      - "Add free access for verified veterans"
+      - "Add paid tier validation for non-veterans"
+      - "Integrate with existing user role system"
+      - "Maintain all existing business formation functionality"
+      - "Include proper error messages for access restrictions"
+    validation_commands:
+      - "npm run build"
+      - "npm run test -- businessFormationService"
+    safety_limits:
+      max_files_changed: 1
+      max_lines_deleted: 30
+
+  - taskId: "T1-VVS-006"
+    description: "Create verification API endpoints that integrate with existing auth system"
+    status: "pending"
+    priority: "medium"
+    agent_preference: "copilot"  # Good for API endpoint creation
+    estimated_duration: "20-30 minutes"
+    files_to_modify:
+      - "server/src/routes/verification.ts"
+      - "server/src/routes/index.ts"
+    forbidden_files:
+      - "server/src/models/schema.ts"
+      - "server/src/utils/database.ts"
+      - "package.json"
+    acceptance_criteria:
+      - "Create new verification routes that use existing auth middleware"
+      - "Add GET /api/v1/verification/status endpoint"
+      - "Add POST /api/v1/verification/documents endpoint"
+      - "Integrate with existing userService for verification operations"
+      - "Use existing API response patterns and error handling"
+      - "Include proper request validation"
+    validation_commands:
+      - "npm run build"
+      - "npm run test -- verification"
+    safety_limits:
+      max_files_changed: 2
+      max_lines_deleted: 25
+
+  # REMOVED: VVS Frontend Tasks (VeteranStatusStep.tsx already handles veteran verification)
+  # REMOVED: VVS Business Model Tasks (User role management already implemented)
+
+  # Original Frontend Enhancement Tasks
+  - taskId: "T1-002"
+    description: "Add real-time validation to business name input field"
+    status: "pending"
+    priority: "medium"
+    agent_preference: "copilot"  # Good for validation logic suggestions
+    estimated_duration: "15-25 minutes"
+    files_to_modify:
+      - "src/components/Steps/BusinessNameStep.tsx"
+    forbidden_files:
+      - "server/src/services/*"
+      - "server/src/utils/database.ts"
+    acceptance_criteria:
+      - "Input field shows error message if name is less than 3 characters"
+      - "Input field shows error message if name contains invalid special characters"
+      - "Real-time validation occurs as user types (debounced)"
+      - "Submit button is disabled when validation errors exist"
+      - "Error messages are accessible with proper ARIA attributes"
+      - "All existing tests continue to pass"
+    validation_commands:
+      - "npm run test -- BusinessNameStep"
+      - "npm run build"
+    safety_limits:
+      max_files_changed: 1
+      max_lines_deleted: 25
+
+  - taskId: "T1-004"
+    description: "Improve error messages and user feedback in LegalDocumentsStep"
+    status: "pending"
+    priority: "medium"
+    agent_preference: "aider"  # Better for comprehensive error handling
+    estimated_duration: "25-35 minutes"
+    files_to_modify:
+      - "src/components/Steps/LegalDocumentsStep.tsx"
+    forbidden_files:
+      - "server/src/services/*"
+      - "server/src/utils/database.ts"
+    acceptance_criteria:
+      - "Replace basic error messages with detailed, user-friendly descriptions"
+      - "Add loading states for document generation processes"
+      - "Include recovery suggestions in error messages"
+      - "Implement proper error boundaries for document operations"
+      - "Add accessibility improvements for error announcements"
+      - "Maintain existing document generation functionality"
+    validation_commands:
+      - "npm run test -- LegalDocumentsStep"
+      - "npm run build"
+    safety_limits:
+      max_files_changed: 1
+      max_lines_deleted: 50
+
+  - taskId: "T1-005"
+    description: "Add loading states and error handling to VeteranStatusStep"
+    status: "pending"
+    priority: "medium"
+    agent_preference: "copilot"  # Good for UI state management suggestions
+    estimated_duration: "20-30 minutes"
+    files_to_modify:
+      - "src/components/Steps/VeteranStatusStep.tsx"
+    forbidden_files:
+      - "server/src/services/*"
+      - "server/src/utils/database.ts"
+    acceptance_criteria:
+      - "Add loading spinner during form submission"
+      - "Disable form inputs while submission is in progress"
+      - "Show clear error messages for validation failures"
+      - "Add success feedback when form is saved"
+      - "Implement proper error recovery mechanisms"
+      - "Maintain all existing veteran status validation logic"
+    validation_commands:
+      - "npm run test -- VeteranStatusStep"
+      - "npm run build"
+    safety_limits:
+      max_files_changed: 1
+      max_lines_deleted: 30
+
+  - taskId: "T1-006"
+    description: "Add input validation helpers to RegisteredAgentStep"
+    status: "pending"
+    priority: "low"
+    agent_preference: "aider"  # Better for validation logic implementation
+    estimated_duration: "20-30 minutes"
+    files_to_modify:
+      - "src/components/Steps/RegisteredAgentStep.tsx"
+    forbidden_files:
+      - "server/src/services/*"
+      - "server/src/utils/database.ts"
+    acceptance_criteria:
+      - "Add email format validation for agent contact information"
+      - "Add phone number format validation and formatting"
+      - "Add address validation with proper error messages"
+      - "Implement real-time validation feedback"
+      - "Add proper TypeScript types for validation functions"
+      - "Ensure all validation is accessible to screen readers"
+    validation_commands:
+      - "npm run test -- RegisteredAgentStep"
+      - "npm run build"
+    safety_limits:
+      max_files_changed: 1
+      max_lines_deleted: 40
+
+  - taskId: "T1-007"
+    description: "Enhance form submission error handling in BusinessVisionStep"
+    status: "pending"
+    priority: "medium"
+    agent_preference: "copilot"  # Good for error handling patterns
+    estimated_duration: "25-35 minutes"
+    files_to_modify:
+      - "src/components/Steps/BusinessVisionStep.tsx"
+    forbidden_files:
+      - "server/src/services/*"
+      - "server/src/utils/database.ts"
+    acceptance_criteria:
+      - "Add comprehensive try-catch blocks around form submission"
+      - "Implement detailed error messages for different failure scenarios"
+      - "Add loading states during form processing"
+      - "Include retry mechanisms for transient failures"
+      - "Add proper error logging for debugging"
+      - "Maintain existing business vision form functionality"
+    validation_commands:
+      - "npm run test -- BusinessVisionStep"
+      - "npm run build"
+    safety_limits:
+      max_files_changed: 1
+      max_lines_deleted: 35
+
+  - taskId: "T1-008"
+    description: "Add loading states to PreferencesStep form"
+    status: "pending"
+    priority: "low"
+    agent_preference: "aider"  # Better for state management implementation
+    estimated_duration: "15-25 minutes"
+    files_to_modify:
+      - "src/components/Steps/PreferencesStep.tsx"
+    forbidden_files:
+      - "server/src/services/*"
+      - "server/src/utils/database.ts"
+    acceptance_criteria:
+      - "Add loading spinner during form submission"
+      - "Disable form controls while processing"
+      - "Show progress indicators for multi-step operations"
+      - "Add success/error feedback after submission"
+      - "Implement proper loading state cleanup"
+      - "Maintain all existing preferences functionality"
+    validation_commands:
+      - "npm run test -- PreferencesStep"
+      - "npm run build"
+    safety_limits:
+      max_files_changed: 1
+      max_lines_deleted: 25
+
+  - taskId: "T1-009"
+    description: "Improve validation messages across all wizard steps"
+    status: "pending"
+    priority: "low"
+    agent_preference: "copilot"  # Good for consistency and messaging
+    estimated_duration: "30-40 minutes"
+    files_to_modify:
+      - "src/components/Steps/UserProfileStep.tsx"
+      - "src/components/Steps/BusinessNameStep.tsx"
+      - "src/components/Steps/LegalStructureStep.tsx"
+      - "src/components/Steps/PreferencesStep.tsx"
+    forbidden_files:
+      - "server/src/services/*"
+      - "server/src/utils/database.ts"
+    acceptance_criteria:
+      - "Standardize validation message format across all steps"
+      - "Add helpful hints and examples in validation messages"
+      - "Ensure all messages are user-friendly and actionable"
+      - "Add proper internationalization support for messages"
+      - "Implement consistent error styling and positioning"
+      - "Maintain existing validation logic and behavior"
+    validation_commands:
+      - "npm run test"
+      - "npm run build"
+    safety_limits:
+      max_files_changed: 4
+      max_lines_deleted: 60
+
+# Task execution rules
+execution_rules:
+  max_concurrent_tasks: 1
+  delay_between_tasks: 180  # 3 minutes (reduced for VVS priority)
+  max_retries: 2
+  timeout_minutes: 45
+  priority_order: ["high", "medium", "low"]
+  vvs_priority: true  # VVS tasks get priority scheduling
+  
+# Safety configuration
+safety_config:
+  require_git_branch: true
+  require_backup: true
+  require_validation: true
+  require_semantic_check: true
+  forbidden_patterns:
+    - "server/src/services/"
+    - "server/src/utils/database.ts"
+    - "package.json"
+    - "package-lock.json"
+    - ".env"
+  
+# Validation configuration  
+validation_config:
+  typescript_check: true
+  build_check: true
+  test_check: true
+  lint_check: true
+  semantic_check: true
+  semantic_model: "gemini-1.5-pro"
