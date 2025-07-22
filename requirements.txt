@@ -1,0 +1,24 @@
+# AI Catalyst - Python Dependencies for Safe MCP Automation
+# Core automation and AI agent management
+
+# Aider - AI coding assistant
+aider-chat>=0.50.0
+
+# Core Python utilities (usually included but explicit for CI)
+argparse
+pathlib
+subprocess
+json
+datetime
+shutil
+
+# Optional: Enhanced logging and monitoring
+pyyaml>=6.0
+requests>=2.31.0
+
+# Optional: Advanced git operations
+GitPython>=3.1.40
+
+# Development and testing
+pytest>=7.4.0
+pytest-cov>=4.1.0

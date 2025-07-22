@@ -1,0 +1,75 @@
+name: VVS Task Queue Processor
+
+on:
+  workflow_dispatch: # Manual trigger to process one task
+  schedule:
+    - cron: '0 4 * * 1' # Run every Monday at 4 AM UTC
+
+jobs:
+  process-queue:
+    runs-on: ubuntu-latest
+    # Safety check to prevent running on forks
+    if: github.repository == 'AccidentalJedi/AI-Catalyst'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # A PAT is required to push changes and trigger other workflows
+          token: ${{ secrets.WORKFLOW_PAT }}
+          fetch-depth: 0
+
+      - name: Check if queue file exists and is not empty
+        id: check_queue
+        run: |
+          if [ -s vvs_task_queue.txt ]; then
+            echo "Queue has tasks. Proceeding."
+            echo "queue_not_empty=true" >> $GITHUB_OUTPUT
+          else
+            echo "Queue is empty. Nothing to do."
+            echo "queue_not_empty=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Node.js
+        if: steps.check_queue.outputs.queue_not_empty == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Python
+        if: steps.check_queue.outputs.queue_not_empty == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        if: steps.check_queue.outputs.queue_not_empty == 'true'
+        run: |
+          npm install
+          pip install -r requirements.txt
+
+      - name: Configure Git User
+        if: steps.check_queue.outputs.queue_not_empty == 'true'
+        run: |
+          git config --global user.name "AI Catalyst MCP"
+          git config --global user.email "mcp-bot@users.noreply.github.com"
+
+      - name: Process first task from queue
+        if: steps.check_queue.outputs.queue_not_empty == 'true'
+        id: process_task
+        run: |
+          TASK=$(head -n 1 vvs_task_queue.txt)
+          echo "Processing task: $TASK"
+          echo "task_description=$TASK" >> $GITHUB_OUTPUT
+          python "scripts/safe_mcp.py" --task "$TASK"
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+      - name: Update task queue on success
+        if: success() && steps.check_queue.outputs.queue_not_empty == 'true'
+        run: |
+          # Remove the first line from the queue
+          sed -i '1d' vvs_task_queue.txt
+          git add vvs_task_queue.txt
+          git commit -m "chore(vvs): Processed task and updated queue" -m "Completed: ${{ steps.process_task.outputs.task_description }}"
+          git push origin main

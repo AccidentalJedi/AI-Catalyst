@@ -1,0 +1,43 @@
+name: Dependabot Auto-Merge
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  pull-requests: write
+  contents: write
+
+jobs:
+  automerge:
+    runs-on: ubuntu-latest
+    # Only run on PRs from dependabot and if they target the main branch
+    if: github.actor == 'dependabot[bot]' && github.base_ref == 'main'
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run The Gauntlet (Format, Lint, Test)
+        run: |
+          npm run format
+          npm run lint
+          npm run test
+
+      - name: Auto-merge PR
+        if: success()
+        run: gh pr merge --auto --squash --delete-branch "${{ github.event.pull_request.number }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

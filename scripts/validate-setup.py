@@ -64,6 +64,8 @@ def check_workflows():
     
     workflow_files = [
         '.github/workflows/safe-mcp-automation.yml',
+        '.github/workflows/dependabot-auto-merge.yml',
+        '.github/workflows/vvs-task-queue.yml',
         '.github/workflows/security-scan.yml'
     ]
     
