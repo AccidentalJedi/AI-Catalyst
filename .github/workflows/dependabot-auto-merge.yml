@@ -28,12 +28,19 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          cd server && npm install
 
       - name: Run The Gauntlet (Format, Lint, Test)
         run: |
+          # Frontend checks
           npm run format
           npm run lint
+          npm run test:run
+
+          # Backend checks
+          cd server
           npm run test
 
       - name: Auto-merge PR
