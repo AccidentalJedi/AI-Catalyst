@@ -14,6 +14,18 @@ process.env.DOCUSIGN_USER_ID = 'test-user-id';
 process.env.DOCUSIGN_ACCOUNT_ID = 'test-account-id';
 process.env.DOCUSIGN_PRIVATE_KEY = 'test-private-key';
 
+// Database test configuration
+process.env.DATABASE_TYPE = process.env.TEST_DATABASE_TYPE || 'postgresql';
+process.env.DATABASE_PATH = './data/test-ai-catalyst.db'; // SQLite fallback
+process.env.POSTGRES_HOST = process.env.TEST_POSTGRES_HOST || 'localhost';
+process.env.POSTGRES_PORT = process.env.TEST_POSTGRES_PORT || '5432';
+process.env.POSTGRES_DATABASE = process.env.TEST_POSTGRES_DATABASE || 'ai_catalyst_test';
+process.env.POSTGRES_USER = process.env.TEST_POSTGRES_USER || 'ai_catalyst_test_user';
+process.env.POSTGRES_PASSWORD = process.env.TEST_POSTGRES_PASSWORD || 'test_password';
+process.env.POSTGRES_SSL = 'false';
+process.env.POSTGRES_POOL_MIN = '1';
+process.env.POSTGRES_POOL_MAX = '5';
+
 // Mock console methods to reduce test noise
 global.console = {
   ...console,

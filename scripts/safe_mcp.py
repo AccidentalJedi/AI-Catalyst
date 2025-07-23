@@ -14,6 +14,7 @@ from datetime import datetime
 # --- Configuration ---
 # Define the sequence of validation commands that form "The Gauntlet".
 THE_GAUNTLET = [
+    {"name": "Database Migration", "command": "npm run db:migrate:latest"},
     {"name": "Formatting Check", "command": "npm run format"},
     {"name": "Linting Check", "command": "npm run lint"},
     {"name": "Unit Tests", "command": "npm run test"},

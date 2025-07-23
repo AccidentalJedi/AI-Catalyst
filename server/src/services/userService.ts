@@ -1,5 +1,24 @@
+/**
+ * AI Catalyst UserService - Database-Agnostic Implementation
+ *
+ * This service demonstrates best practices for database-agnostic development:
+ *
+ * KEY PATTERNS IMPLEMENTED:
+ * ✅ Universal Parameter Placeholders: Uses ? instead of $1, $2 (PostgreSQL-specific)
+ * ✅ JavaScript Date Objects: Uses new Date() instead of database-specific functions
+ * ✅ Unified Database Adapter: Leverages DatabaseAdapterFactory for cross-database compatibility
+ * ✅ Transaction Management: Uses dbUtils.transaction() for atomic operations
+ * ✅ Type Conversion: Explicit conversion of database types to JavaScript types
+ * ✅ UUID Generation: Uses crypto.randomUUID() instead of database-specific functions
+ *
+ * COMPATIBILITY: Works seamlessly with SQLite (development) and PostgreSQL (production)
+ *
+ * This service serves as a template for other database-agnostic services in the codebase.
+ */
+
 import crypto from 'crypto';
-import { dbUtils, transaction } from '@utils/database';
+// Import unified database utilities for database-agnostic operations (SQLite/PostgreSQL compatible)
+import { unifiedDbUtils as dbUtils } from '@utils/databaseAdapter';
 import { hashPassword, verifyPassword, encryptSensitiveFields, decryptSensitiveFields } from '@utils/encryption';
 import { logSuccess, logFailure, logDataChange, AuditAction, AuditResource } from '@utils/audit';
 import { dbLogger } from '@utils/logger';
@@ -32,6 +51,12 @@ export interface UserProfile extends Omit<UserEntity, 'passwordHash'> {
 
 /**
  * Create a new user account
+ *
+ * DATABASE-AGNOSTIC PATTERNS DEMONSTRATED:
+ * - Uses ? parameter placeholders (works with SQLite/PostgreSQL)
+ * - Uses JavaScript Date objects instead of database-specific date functions
+ * - Uses crypto.randomUUID() instead of database-specific UUID generation
+ * - Leverages unified transaction management through dbUtils.transaction()
  */
 export const createUser = async (
   userData: UserRegistrationData,
@@ -39,64 +64,72 @@ export const createUser = async (
   userAgent?: string
 ): Promise<UserEntity> => {
   try {
+    // Generate UUID using Node.js crypto (database-agnostic)
     const userId = crypto.randomUUID();
     const hashedPassword = await hashPassword(userData.password);
-    
-    // Encrypt sensitive fields
+
+    // Encrypt sensitive fields before database storage
     const encryptedData = encryptSensitiveFields(
       { phone: userData.phone },
       ['phone']
     );
-    
-    const user = await transaction(async (db) => {
-      // Create user
-      const userResult = dbUtils.run(`
+
+    // Use database-agnostic transaction management
+    // This works with both SQLite and PostgreSQL through the unified adapter
+    const user = await dbUtils.transaction(async (db) => {
+      // Create user with database-agnostic SQL
+      // Note: Uses ? placeholders, not PostgreSQL-specific $1, $2, etc.
+      const userResult = await dbUtils.run(`
         INSERT INTO users (
           id, email, firstName, lastName, phone, passwordHash,
           isActive, emailVerified, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         userId,
         userData.email.toLowerCase(),
         userData.firstName,
         userData.lastName,
         JSON.stringify(encryptedData.phone),
-        hashedPassword
+        hashedPassword,
+        true,
+        false,
+        new Date(), // JavaScript Date object (database-agnostic)
+        new Date()  // JavaScript Date object (database-agnostic)
       ]);
       
-      // Assign default user role
+      // Assign default user role using database-agnostic patterns
       const roleId = crypto.randomUUID();
-      dbUtils.run(`
+      await dbUtils.run(`
         INSERT INTO user_roles (id, userId, role, assignedAt, isActive)
-        VALUES (?, ?, 'user', CURRENT_TIMESTAMP, 1)
-      `, [roleId, userId]);
-      
-      // If veteran, assign veteran role
+        VALUES (?, ?, ?, ?, ?)
+      `, [roleId, userId, 'user', new Date(), true]);
+
+      // Conditionally assign veteran role if applicable
       if (userData.isVeteran) {
         const veteranRoleId = crypto.randomUUID();
-        dbUtils.run(`
+        await dbUtils.run(`
           INSERT INTO user_roles (id, userId, role, assignedAt, isActive)
-          VALUES (?, ?, 'veteran', CURRENT_TIMESTAMP, 1)
-        `, [veteranRoleId, userId]);
-        
-        // Create veteran verification record
+          VALUES (?, ?, ?, ?, ?)
+        `, [veteranRoleId, userId, 'veteran', new Date(), true]);
+
+        // Create veteran verification record with pending status
+        // All queries use consistent ? placeholder pattern
         const verificationId = crypto.randomUUID();
-        dbUtils.run(`
+        await dbUtils.run(`
           INSERT INTO veteran_verification (
             id, userId, verificationStatus, createdAt, updatedAt
-          ) VALUES (?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        `, [verificationId, userId]);
+          ) VALUES (?, ?, ?, ?, ?)
+        `, [verificationId, userId, 'pending', new Date(), new Date()]);
       }
       
       // Create default notification preferences
       const preferencesId = crypto.randomUUID();
-      dbUtils.run(`
+      await dbUtils.run(`
         INSERT INTO notification_preferences (
-          id, userId, emailNotifications, smsNotifications, pushNotifications,
-          complianceReminders, marketingEmails, securityAlerts,
-          createdAt, updatedAt
-        ) VALUES (?, ?, 1, 0, 1, 1, 0, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      `, [preferencesId, userId]);
+          id, userId, emailNotifications, smsNotifications, complianceReminders,
+          documentUpdates, grantOpportunities, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [preferencesId, userId, true, false, true, true, true, new Date(), new Date()]);
       
       return userResult;
     });
@@ -145,24 +178,33 @@ export const createUser = async (
 
 /**
  * Get user by ID
+ *
+ * DATABASE-AGNOSTIC PATTERNS:
+ * - Uses ? parameter placeholders for safe parameterized queries
+ * - Handles database result conversion to JavaScript types
+ * - Works consistently across SQLite and PostgreSQL
  */
 export const getUserById = async (userId: string): Promise<UserEntity | null> => {
   try {
-    const user = dbUtils.get<any>(`
+    // Database-agnostic query using ? placeholders
+    // The unified adapter handles differences between SQLite and PostgreSQL result formats
+    const user = await dbUtils.get<any>(`
       SELECT id, email, firstName, lastName, phone, passwordHash,
              createdAt, updatedAt, isActive, lastLoginAt, emailVerified,
              emailVerificationToken, passwordResetToken, passwordResetExpires
-      FROM users 
-      WHERE id = ? AND isActive = 1
-    `, [userId]);
+      FROM users
+      WHERE id = ? AND isActive = ?
+    `, [userId, true]);
     
     if (!user) {
       return null;
     }
     
-    // Decrypt sensitive fields
+    // Decrypt sensitive fields that were encrypted before storage
     const decryptedUser = decryptSensitiveFields(user, ['phone']);
-    
+
+    // Convert database types to JavaScript types (database-agnostic approach)
+    // This handles differences in how SQLite vs PostgreSQL store/return data types
     return {
       ...decryptedUser,
       id: user.id,
@@ -171,12 +213,12 @@ export const getUserById = async (userId: string): Promise<UserEntity | null> =>
       lastName: user.lastName,
       phone: decryptedUser.phone,
       passwordHash: user.passwordHash,
-      isActive: Boolean(user.isActive),
-      createdAt: new Date(user.createdAt),
-      updatedAt: new Date(user.updatedAt),
+      isActive: Boolean(user.isActive),           // Ensure boolean type consistency
+      createdAt: new Date(user.createdAt),        // Convert to JavaScript Date
+      updatedAt: new Date(user.updatedAt),        // Convert to JavaScript Date
       lastLoginAt: user.lastLoginAt ? new Date(user.lastLoginAt) : undefined,
       passwordResetExpires: user.passwordResetExpires ? new Date(user.passwordResetExpires) : undefined,
-      emailVerified: Boolean(user.emailVerified),
+      emailVerified: Boolean(user.emailVerified), // Ensure boolean type consistency
       emailVerificationToken: user.emailVerificationToken,
       passwordResetToken: user.passwordResetToken
     } as UserEntity;
@@ -194,13 +236,13 @@ export const getUserById = async (userId: string): Promise<UserEntity | null> =>
  */
 export const getUserByEmail = async (email: string): Promise<UserEntity | null> => {
   try {
-    const user = dbUtils.get<any>(`
+    const user = await dbUtils.get<any>(`
       SELECT id, email, firstName, lastName, phone, passwordHash,
              createdAt, updatedAt, isActive, lastLoginAt, emailVerified,
              emailVerificationToken, passwordResetToken, passwordResetExpires
-      FROM users 
-      WHERE email = ? AND isActive = 1
-    `, [email.toLowerCase()]);
+      FROM users
+      WHERE email = ? AND isActive = ?
+    `, [email.toLowerCase(), true]);
     
     if (!user) {
       return null;
@@ -237,6 +279,12 @@ export const getUserByEmail = async (email: string): Promise<UserEntity | null> 
 
 /**
  * Update user profile
+ *
+ * DATABASE-AGNOSTIC PATTERNS DEMONSTRATED:
+ * - Dynamic query building using ? placeholders
+ * - Consistent parameter array construction
+ * - Database-agnostic date handling
+ * - Safe SQL construction without string interpolation
  */
 export const updateUser = async (
   userId: string,
@@ -251,14 +299,16 @@ export const updateUser = async (
     if (!currentUser) {
       throw new Error('User not found');
     }
-    
+
     // Prepare update data with encryption for sensitive fields
     const encryptedData = encryptSensitiveFields(updateData, ['phone']);
-    
-    // Build dynamic update query
+
+    // Build dynamic update query using database-agnostic patterns
+    // This approach works with both SQLite and PostgreSQL
     const updateFields: string[] = [];
     const updateValues: any[] = [];
-    
+
+    // Use ? placeholders for all dynamic values (database-agnostic)
     if (updateData.firstName) {
       updateFields.push('firstName = ?');
       updateValues.push(updateData.firstName);
@@ -275,17 +325,20 @@ export const updateUser = async (
       updateFields.push('email = ?');
       updateValues.push(updateData.email.toLowerCase());
     }
-    
+
     if (updateFields.length === 0) {
       return currentUser; // No changes to make
     }
-    
-    updateFields.push('updatedAt = CURRENT_TIMESTAMP');
-    updateValues.push(userId);
-    
-    // Execute update
-    dbUtils.run(`
-      UPDATE users 
+
+    // Always update the timestamp using JavaScript Date (database-agnostic)
+    updateFields.push('updatedAt = ?');
+    updateValues.push(new Date());
+    updateValues.push(userId); // Add userId for WHERE clause
+
+    // Execute dynamic update query using database-agnostic SQL construction
+    // Template literal with join() ensures safe SQL without injection risks
+    await dbUtils.run(`
+      UPDATE users
       SET ${updateFields.join(', ')}
       WHERE id = ?
     `, updateValues);
@@ -359,11 +412,11 @@ export const verifyUserPassword = async (userId: string, password: string): Prom
  */
 export const updateLastLogin = async (userId: string): Promise<void> => {
   try {
-    dbUtils.run(`
-      UPDATE users 
-      SET lastLoginAt = CURRENT_TIMESTAMP 
+    await dbUtils.run(`
+      UPDATE users
+      SET lastLoginAt = ?, updatedAt = ?
       WHERE id = ?
-    `, [userId]);
+    `, [new Date(), new Date(), userId]);
   } catch (error) {
     dbLogger.error('Failed to update last login:', {
       error: error instanceof Error ? error.message : 'Unknown error',

@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import Handlebars from 'handlebars';
-import { dbUtils, transaction } from '@utils/database';
+import { dbUtils } from '@utils/databaseAdapter';
 import { dbLogger } from '@utils/logger';
 import {
   DocumentGenerationRequest,

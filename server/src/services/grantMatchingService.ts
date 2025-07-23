@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { dbUtils } from '@utils/database';
+import { dbUtils } from '@utils/databaseAdapter';
 import { dbLogger } from '@utils/logger';
 import { calculateFrictionScore, getApplicationComplexity, getRecommendedApplicationMode } from './frictionScoringService';
 import { VeteranProfile } from '../types/index';
@@ -77,17 +77,17 @@ const performRuleBasedFiltering = async (profile: VeteranProfile): Promise<any[]
     const params: any[] = [];
 
     // Basic eligibility filters
-    conditions.push('isActive = 1');
-    
+    conditions.push('"isActive" = true');
+
     // Disability rating requirement
-    conditions.push('(minDisabilityRating IS NULL OR minDisabilityRating <= ?)');
+    conditions.push('("minDisabilityRating" IS NULL OR "minDisabilityRating" <= $' + (params.length + 1) + ')');
     params.push(profile.disabilityRating);
-    
-    // Geographic eligibility
+
+    // Geographic eligibility (PostgreSQL JSON syntax)
     conditions.push(`(
-      residencyRequired IS NULL OR 
-      JSON_EXTRACT(residencyRequired, '$') LIKE '%"${profile.state}"%' OR
-      JSON_EXTRACT(residencyRequired, '$') LIKE '%"${profile.county}"%'
+      "residencyRequired" IS NULL OR
+      "residencyRequired"::text LIKE '%"${profile.state}"%' OR
+      "residencyRequired"::text LIKE '%"${profile.county}"%'
     )`);
     
     // Service era requirements
@@ -105,18 +105,18 @@ const performRuleBasedFiltering = async (profile: VeteranProfile): Promise<any[]
     )`);
 
     const query = `
-      SELECT 
-        id, grantName, grantingOrganization, grantType, maxGrantAmount,
-        eligibilityCriteria, otherCriteriaText, applicationProcess,
-        requiredDocuments, actionableSteps, frictionScore,
-        documentationBurden, processSteps, thirdPartyDependency,
-        ambiguityGatekeeping, submissionMode, pointOfContact
-      FROM grant_opportunities 
+      SELECT
+        id, "grantName", "grantingOrganization", "grantType", "maxGrantAmount",
+        "eligibilityCriteria", "otherCriteriaText", "applicationProcess",
+        "requiredDocuments", "actionableSteps", "frictionScore",
+        "documentationBurden", "processSteps", "thirdPartyDependency",
+        "ambiguityGatekeeping", "submissionMode", "pointOfContact"
+      FROM grant_opportunities
       WHERE ${conditions.join(' AND ')}
-      ORDER BY maxGrantAmount DESC, frictionScore ASC
+      ORDER BY "maxGrantAmount" DESC, "frictionScore" ASC
     `;
 
-    const grants = dbUtils.all(query, params);
+    const grants = await dbUtils.all(query, params);
     
     dbLogger.info('Rule-based filtering results', {
       totalGrants: grants.length,
@@ -428,10 +428,10 @@ const prioritizeMatches = async (matches: GrantMatch[], profile: VeteranProfile)
     // Calculate friction-adjusted scores
     for (const match of matches) {
       // Get grant friction score
-      const grant = dbUtils.get(`
-        SELECT frictionScore, maxGrantAmount, grantType
+      const grant = await dbUtils.get(`
+        SELECT "frictionScore", "maxGrantAmount", "grantType"
         FROM grant_opportunities
-        WHERE id = ?
+        WHERE id = $1
       `, [match.grantId]);
 
       if (grant) {
@@ -497,18 +497,18 @@ export const storeGrantMatches = async (
 ): Promise<void> => {
   try {
     // Clear existing matches for this user
-    dbUtils.run('DELETE FROM grant_matches WHERE userId = ?', [userId]);
+    await dbUtils.run('DELETE FROM grant_matches WHERE "userId" = $1', [userId]);
 
     // Insert new matches
     for (const match of matches) {
       const matchId = crypto.randomUUID();
 
-      dbUtils.run(`
+      await dbUtils.run(`
         INSERT INTO grant_matches (
-          id, userId, grantId, matchScore, eligibilityStatus, matchReason,
-          ruleBasedMatch, llmClassification, llmConfidence, frictionAdjustedScore,
-          recommendationPriority, lastChecked
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          id, "userId", "grantId", "matchScore", "eligibilityStatus", "matchReason",
+          "ruleBasedMatch", "llmClassification", "llmConfidence", "frictionAdjustedScore",
+          "recommendationPriority", "lastChecked"
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
       `, [
         matchId,
         userId,
@@ -516,7 +516,7 @@ export const storeGrantMatches = async (
         match.matchScore,
         match.eligibilityStatus,
         match.matchReason,
-        match.ruleBasedMatch ? 1 : 0,
+        match.ruleBasedMatch,
         match.llmClassification,
         match.llmConfidence,
         match.frictionAdjustedScore,
@@ -541,24 +541,24 @@ export const storeGrantMatches = async (
 /**
  * Get stored grant matches for a user
  */
-export const getUserGrantMatches = (
+export const getUserGrantMatches = async (
   userId: string,
   limit: number = 20
-): GrantMatch[] => {
+): Promise<GrantMatch[]> => {
   try {
-    const matches = dbUtils.all(`
+    const matches = await dbUtils.all(`
       SELECT
         gm.*,
-        go.grantName,
-        go.grantingOrganization,
-        go.requiredDocuments,
-        go.actionableSteps,
-        go.frictionScore
+        go."grantName",
+        go."grantingOrganization",
+        go."requiredDocuments",
+        go."actionableSteps",
+        go."frictionScore"
       FROM grant_matches gm
-      JOIN grant_opportunities go ON gm.grantId = go.id
-      WHERE gm.userId = ?
-      ORDER BY gm.recommendationPriority DESC
-      LIMIT ?
+      JOIN grant_opportunities go ON gm."grantId" = go.id
+      WHERE gm."userId" = $1
+      ORDER BY gm."recommendationPriority" DESC
+      LIMIT $2
     `, [userId, limit]);
 
     return matches.map(match => ({
@@ -603,33 +603,35 @@ export const updateGrantMatchFeedback = async (
     const updates: string[] = [];
     const params: any[] = [];
 
+    let paramIndex = 1;
+
     if (feedback) {
-      updates.push('userFeedback = ?');
+      updates.push(`"userFeedback" = $${paramIndex++}`);
       params.push(feedback);
     }
 
     if (applicationStarted !== undefined) {
-      updates.push('applicationStarted = ?');
-      params.push(applicationStarted ? 1 : 0);
+      updates.push(`"applicationStarted" = $${paramIndex++}`);
+      params.push(applicationStarted);
     }
 
     if (applicationCompleted !== undefined) {
-      updates.push('applicationCompleted = ?');
-      params.push(applicationCompleted ? 1 : 0);
+      updates.push(`"applicationCompleted" = $${paramIndex++}`);
+      params.push(applicationCompleted);
     }
 
     if (grantAwarded !== undefined) {
-      updates.push('grantAwarded = ?');
-      params.push(grantAwarded ? 1 : 0);
+      updates.push(`"grantAwarded" = $${paramIndex++}`);
+      params.push(grantAwarded);
     }
 
     if (updates.length > 0) {
       params.push(userId, grantId);
 
-      dbUtils.run(`
+      await dbUtils.run(`
         UPDATE grant_matches
-        SET ${updates.join(', ')}, lastChecked = CURRENT_TIMESTAMP
-        WHERE userId = ? AND grantId = ?
+        SET ${updates.join(', ')}, "lastChecked" = CURRENT_TIMESTAMP
+        WHERE "userId" = $${paramIndex++} AND "grantId" = $${paramIndex}
       `, params);
 
       dbLogger.info('Grant match feedback updated', {

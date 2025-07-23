@@ -3,7 +3,7 @@ import { AuthenticatedRequest, VeteranProfile } from '../types/index';
 import { findMatchingGrants, storeGrantMatches, getUserGrantMatches, updateGrantMatchFeedback } from '@services/grantMatchingService';
 import { dbLogger } from '@utils/logger';
 import { authenticateToken } from '@middleware/auth';
-import { dbUtils } from '@utils/database';
+import { dbUtils } from '@utils/databaseAdapter';
 
 const router = Router();
 
@@ -195,30 +195,30 @@ router.get('/stats', authenticateToken, async (req: AuthenticatedRequest, res: R
     }
 
     // Get user's grant matching statistics
-    const stats = dbUtils.get(`
-      SELECT 
-        COUNT(*) as totalMatches,
-        COUNT(CASE WHEN eligibilityStatus = 'eligible' THEN 1 END) as eligibleMatches,
-        COUNT(CASE WHEN applicationStarted = 1 THEN 1 END) as applicationsStarted,
-        COUNT(CASE WHEN applicationCompleted = 1 THEN 1 END) as applicationsCompleted,
-        COUNT(CASE WHEN grantAwarded = 1 THEN 1 END) as grantsAwarded,
-        AVG(frictionAdjustedScore) as averageScore,
-        MAX(lastChecked) as lastMatchDate
-      FROM grant_matches 
-      WHERE userId = ?
+    const stats = await dbUtils.get(`
+      SELECT
+        COUNT(*) as "totalMatches",
+        COUNT(CASE WHEN "eligibilityStatus" = 'eligible' THEN 1 END) as "eligibleMatches",
+        COUNT(CASE WHEN "applicationStarted" = true THEN 1 END) as "applicationsStarted",
+        COUNT(CASE WHEN "applicationCompleted" = true THEN 1 END) as "applicationsCompleted",
+        COUNT(CASE WHEN "grantAwarded" = true THEN 1 END) as "grantsAwarded",
+        AVG("frictionAdjustedScore") as "averageScore",
+        MAX("lastChecked") as "lastMatchDate"
+      FROM grant_matches
+      WHERE "userId" = $1
     `, [userId]);
 
     // Get top grant types by match count
-    const topGrantTypes = dbUtils.all(`
-      SELECT 
-        go.grantType,
-        COUNT(*) as matchCount,
-        AVG(gm.frictionAdjustedScore) as averageScore
+    const topGrantTypes = await dbUtils.all(`
+      SELECT
+        go."grantType",
+        COUNT(*) as "matchCount",
+        AVG(gm."frictionAdjustedScore") as "averageScore"
       FROM grant_matches gm
-      JOIN grant_opportunities go ON gm.grantId = go.id
-      WHERE gm.userId = ?
-      GROUP BY go.grantType
-      ORDER BY matchCount DESC
+      JOIN grant_opportunities go ON gm."grantId" = go.id
+      WHERE gm."userId" = $1
+      GROUP BY go."grantType"
+      ORDER BY COUNT(*) DESC
       LIMIT 5
     `, [userId]);
 

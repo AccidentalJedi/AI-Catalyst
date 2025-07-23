@@ -370,6 +370,29 @@ export interface DatabaseConfig {
   };
 }
 
+export interface PostgreSQLConfig {
+  type: 'postgresql';
+  connectionString?: string;
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password?: string;
+  ssl?: boolean | { rejectUnauthorized: boolean };
+  pool: {
+    min: number;
+    max: number;
+    idleTimeoutMillis: number;
+    connectionTimeoutMillis: number;
+  };
+}
+
+export interface ActiveDatabaseConfig {
+  type: 'sqlite' | 'postgresql';
+  sqlite: DatabaseConfig;
+  postgresql: PostgreSQLConfig;
+}
+
 export interface ServerConfig {
   port: number;
   host: string;
@@ -450,6 +473,17 @@ export interface TexasSosApiResponse {
     };
   };
   error?: string;
+}
+
+// Authentication Types
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
 }
 
 // Validation Schemas (for Joi)

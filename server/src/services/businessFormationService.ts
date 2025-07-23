@@ -4,10 +4,9 @@
  */
 
 import crypto from 'crypto';
-import Database from 'better-sqlite3';
-import { dbUtils, transaction } from '../types/index';
+import { dbUtils } from '@utils/databaseAdapter';
 import { dbLogger } from '@utils/logger';
-import { encryptSensitiveFields, decryptSensitiveFields } from '../types/index';
+import { encryptSensitiveFields, decryptSensitiveFields } from '@utils/encryption';
 import { 
   BusinessFormationPayload,
   LLCFormationPayload,
@@ -38,7 +37,7 @@ export class BusinessFormationService {
       const workflowId = crypto.randomUUID();
       const workflowType: WorkflowType = `${payload.businessType.toLowerCase()}_formation` as WorkflowType;
       
-      return await transaction(async (db) => {
+      return await dbUtils.transaction(async (db) => {
         // Create addresses first
         const businessAddressId = await this.createAddress(payload.businessAddress);
         const mailingAddressId = payload.mailingAddress 
@@ -109,9 +108,9 @@ export class BusinessFormationService {
    */
   static async getWorkflow(workflowId: string, userId: string): Promise<BusinessFormationWorkflow | null> {
     try {
-      const result = dbUtils.get(`
-        SELECT * FROM business_formation_workflows 
-        WHERE id = ? AND userId = ?
+      const result = await dbUtils.get(`
+        SELECT * FROM business_formation_workflows
+        WHERE id = $1 AND "userId" = $2
       `, [workflowId, userId]);
       
       if (!result) {
@@ -140,7 +139,7 @@ export class BusinessFormationService {
     markComplete: boolean = false
   ): Promise<boolean> {
     try {
-      return await transaction(async (db) => {
+      return await dbUtils.transaction(async (db) => {
         const workflow = await this.getWorkflow(workflowId, userId);
         if (!workflow) {
           throw new Error('Workflow not found');

@@ -1,0 +1,88 @@
+# AI Catalyst Production Dockerfile
+# Multi-stage build for optimized production image
+
+# Build stage
+FROM node:18-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    postgresql-client
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install dependencies
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy source code
+COPY src/ ./src/
+COPY scripts/ ./scripts/
+COPY migrations/ ./migrations/
+COPY templates/ ./templates/
+
+# Build TypeScript
+RUN npm run build
+
+# Production stage
+FROM node:18-alpine AS production
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S ai-catalyst -u 1001
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    postgresql-client \
+    curl \
+    dumb-init
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy built application from builder stage
+COPY --from=builder --chown=ai-catalyst:nodejs /app/dist ./dist
+COPY --from=builder --chown=ai-catalyst:nodejs /app/migrations ./migrations
+COPY --from=builder --chown=ai-catalyst:nodejs /app/templates ./templates
+COPY --from=builder --chown=ai-catalyst:nodejs /app/scripts ./scripts
+
+# Create necessary directories
+RUN mkdir -p logs data backups && \
+    chown -R ai-catalyst:nodejs logs data backups
+
+# Copy health check script
+COPY --chown=ai-catalyst:nodejs docker/healthcheck.sh ./healthcheck.sh
+RUN chmod +x ./healthcheck.sh
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3001
+ENV LOG_LEVEL=info
+
+# Expose port
+EXPOSE 3001
+
+# Switch to non-root user
+USER ai-catalyst
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD ./healthcheck.sh
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start application
+CMD ["node", "dist/server.js"]

@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { dbUtils, transaction } from '@utils/database';
+import { dbUtils } from '@utils/databaseAdapter';
 import { encryptSensitiveFields, decryptSensitiveFields, generateSecureToken } from '@utils/encryption';
 import { logSuccess, logFailure, logDataChange, AuditAction, AuditResource } from '@utils/audit';
 import { dbLogger, fileLogger } from '@utils/logger';

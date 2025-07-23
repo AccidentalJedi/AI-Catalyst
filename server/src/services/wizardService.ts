@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { dbUtils, transaction } from '@utils/database';
+import { dbUtils } from '@utils/databaseAdapter';
 import { logSuccess, logFailure, logDataChange, AuditAction, AuditResource } from '@utils/audit';
 import { dbLogger } from '@utils/logger';
 import { WizardProgressEntity, ComplianceCheckpoint } from '../types/index';
@@ -105,11 +105,11 @@ export const initializeWizardProgress = async (
     const initialStep = WIZARD_PHASES.DOCUMENT_DISCOVERY.steps[0].id;
     
     // Create wizard progress record
-    dbUtils.run(`
+    await dbUtils.run(`
       INSERT INTO wizard_progress (
-        id, userId, currentPhase, currentStep, completedSteps,
-        overallProgress, estimatedTimeRemaining, lastUpdated, createdAt
-      ) VALUES (?, ?, ?, ?, '[]', 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        id, "userId", "currentPhase", "currentStep", "completedSteps",
+        "overallProgress", "estimatedTimeRemaining", "lastUpdated", "createdAt"
+      ) VALUES ($1, $2, $3, $4, '[]', 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `, [progressId, userId, initialPhase, initialStep]);
     
     // Create compliance checkpoints
@@ -159,21 +159,21 @@ export const initializeWizardProgress = async (
  */
 export const getWizardProgress = async (userId: string): Promise<WizardProgressEntity | null> => {
   try {
-    const progress = dbUtils.get<any>(`
-      SELECT * FROM wizard_progress 
-      WHERE userId = ?
-      ORDER BY createdAt DESC
+    const progress = await dbUtils.get<any>(`
+      SELECT * FROM wizard_progress
+      WHERE "userId" = $1
+      ORDER BY "createdAt" DESC
       LIMIT 1
     `, [userId]);
-    
+
     if (!progress) {
       return null;
     }
-    
+
     // Get compliance checkpoints
-    const checkpoints = dbUtils.all<any>(`
-      SELECT * FROM compliance_checkpoints 
-      WHERE userId = ?
+    const checkpoints = await dbUtils.all<any>(`
+      SELECT * FROM compliance_checkpoints
+      WHERE "userId" = $1
       ORDER BY deadline ASC
     `, [userId]);
     
@@ -253,36 +253,37 @@ export const updateWizardProgress = async (
     // Build update query
     const updateFields: string[] = [];
     const updateValues: any[] = [];
-    
+    let paramIndex = 1;
+
     if (update.currentPhase) {
-      updateFields.push('currentPhase = ?');
+      updateFields.push(`"currentPhase" = $${paramIndex++}`);
       updateValues.push(update.currentPhase);
     }
-    
+
     if (update.currentStep) {
-      updateFields.push('currentStep = ?');
+      updateFields.push(`"currentStep" = $${paramIndex++}`);
       updateValues.push(update.currentStep);
     }
-    
+
     if (completedSteps !== currentProgress.completedSteps) {
-      updateFields.push('completedSteps = ?');
+      updateFields.push(`"completedSteps" = $${paramIndex++}`);
       updateValues.push(JSON.stringify(completedSteps));
     }
-    
+
     if (update.overallProgress !== undefined || overallProgress !== currentProgress.overallProgress) {
-      updateFields.push('overallProgress = ?');
+      updateFields.push(`"overallProgress" = $${paramIndex++}`);
       updateValues.push(update.overallProgress || overallProgress);
     }
-    
-    updateFields.push('lastUpdated = CURRENT_TIMESTAMP');
+
+    updateFields.push('"lastUpdated" = CURRENT_TIMESTAMP');
     updateValues.push(userId);
-    
+
     // Execute update
     if (updateFields.length > 1) { // More than just lastUpdated
-      dbUtils.run(`
-        UPDATE wizard_progress 
+      await dbUtils.run(`
+        UPDATE wizard_progress
         SET ${updateFields.join(', ')}
-        WHERE userId = ?
+        WHERE "userId" = $${paramIndex}
       `, updateValues);
     }
     
@@ -356,17 +357,17 @@ const createComplianceCheckpoints = async (userId: string): Promise<void> => {
   
   for (const checkpoint of checkpoints) {
     const checkpointId = crypto.randomUUID();
-    dbUtils.run(`
+    await dbUtils.run(`
       INSERT INTO compliance_checkpoints (
-        id, userId, name, description, isRequired, deadline,
-        isCompleted, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        id, "userId", name, description, "isRequired", deadline,
+        "isCompleted", "createdAt", "updatedAt"
+      ) VALUES ($1, $2, $3, $4, $5, $6, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `, [
       checkpointId,
       userId,
       checkpoint.name,
       checkpoint.description,
-      checkpoint.isRequired ? 1 : 0,
+      checkpoint.isRequired,
       checkpoint.deadline ? checkpoint.deadline.toISOString() : null
     ]);
   }

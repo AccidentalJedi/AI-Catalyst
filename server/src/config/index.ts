@@ -1,4 +1,4 @@
-import { ServerConfig, DatabaseConfig, DocuSignConfig } from '../types/index';
+import { ServerConfig, DatabaseConfig, PostgreSQLConfig, ActiveDatabaseConfig, DocuSignConfig } from '../types/index';
 const path = require('path');
 const dotenv = require('dotenv');
 
@@ -24,6 +24,13 @@ const productionEnvVars = [
   'DOCUSIGN_PRIVATE_KEY'
 ];
 
+// PostgreSQL-specific environment variables (when using PostgreSQL)
+const postgresEnvVars = [
+  'POSTGRES_USER',
+  'POSTGRES_PASSWORD',
+  'POSTGRES_DATABASE'
+];
+
 // Validate critical environment variables
 for (const envVar of criticalEnvVars) {
   if (!process.env[envVar]) {
@@ -44,6 +51,20 @@ if (isProduction) {
   if (missingDevVars.length > 0) {
     console.warn('⚠️  Development mode: Using fallback values for missing environment variables:', missingDevVars.join(', '));
     console.warn('⚠️  Set these variables in .env file for full functionality');
+  }
+}
+
+// Validate PostgreSQL environment variables if using PostgreSQL
+const databaseType = process.env.DATABASE_TYPE || 'sqlite';
+if (databaseType === 'postgresql') {
+  const missingPostgresVars = postgresEnvVars.filter(envVar => !process.env[envVar]);
+  if (missingPostgresVars.length > 0) {
+    if (isProduction) {
+      throw new Error(`Missing required PostgreSQL environment variables: ${missingPostgresVars.join(', ')}`);
+    } else {
+      console.warn('⚠️  PostgreSQL mode: Missing environment variables:', missingPostgresVars.join(', '));
+      console.warn('⚠️  Using default values - set these in .env file for production');
+    }
   }
 }
 
@@ -101,6 +122,31 @@ export const databaseConfig: DatabaseConfig = {
     fileMustExist: false,
     timeout: parseInt(process.env.DB_TIMEOUT || '5000', 10)
   }
+};
+
+// PostgreSQL Configuration
+export const postgresConfig = {
+  type: 'postgresql' as const,
+  connectionString: process.env.DATABASE_URL,
+  host: process.env.POSTGRES_HOST || 'localhost',
+  port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+  database: process.env.POSTGRES_DATABASE || 'ai_catalyst_dev',
+  user: process.env.POSTGRES_USER || 'ai_catalyst_user',
+  password: process.env.POSTGRES_PASSWORD,
+  ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  pool: {
+    min: parseInt(process.env.POSTGRES_POOL_MIN || '2', 10),
+    max: parseInt(process.env.POSTGRES_POOL_MAX || '20', 10),
+    idleTimeoutMillis: parseInt(process.env.POSTGRES_POOL_IDLE_TIMEOUT || '30000', 10),
+    connectionTimeoutMillis: parseInt(process.env.POSTGRES_POOL_CONNECTION_TIMEOUT || '2000', 10),
+  }
+};
+
+// Active Database Configuration
+export const activeDatabaseConfig = {
+  type: (process.env.DATABASE_TYPE as 'sqlite' | 'postgresql') || 'sqlite',
+  sqlite: databaseConfig,
+  postgresql: postgresConfig
 };
 
 // DocuSign Configuration (2025 Current)

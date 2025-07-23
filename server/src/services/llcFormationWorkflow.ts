@@ -7,7 +7,7 @@ import { BusinessFormationService } from './businessFormationService';
 import { DocumentGenerationService } from './documentGenerationService';
 import { ValidationService } from './validationService';
 import { dbLogger, auditLogger } from '@utils/logger';
-import { dbUtils, transaction } from '@utils/database';
+import { dbUtils } from '@utils/databaseAdapter';
 import {
   LLCFormationPayload,
   BusinessFormationWorkflow,

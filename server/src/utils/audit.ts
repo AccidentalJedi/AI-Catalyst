@@ -1,4 +1,4 @@
-import { dbUtils } from '@utils/database';
+import { dbUtils } from '@utils/databaseAdapter';
 import { dbLogger } from '@utils/logger';
 import crypto from 'crypto';
 
@@ -112,12 +112,12 @@ export const logAuditEvent = async (entry: AuditLogEntry): Promise<void> => {
     };
     
     // Insert audit log entry
-    dbUtils.run(`
+    await dbUtils.run(`
       INSERT INTO audit_logs (
-        id, userId, sessionId, action, resource, resourceId,
-        oldValues, newValues, ipAddress, userAgent, success,
-        errorMessage, metadata, timestamp
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, "userId", "sessionId", action, resource, "resourceId",
+        "oldValues", "newValues", "ipAddress", "userAgent", success,
+        "errorMessage", metadata, timestamp
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     `, [
       sanitizedEntry.id,
       sanitizedEntry.userId,
@@ -221,91 +221,92 @@ export const logDataChange = async (
 /**
  * Get audit logs for a specific user
  */
-export const getUserAuditLogs = (
+export const getUserAuditLogs = async (
   userId: string,
   limit: number = 100,
   offset: number = 0
-): any[] => {
-  return dbUtils.all(`
-    SELECT * FROM audit_logs 
-    WHERE userId = ? 
-    ORDER BY timestamp DESC 
-    LIMIT ? OFFSET ?
+): Promise<any[]> => {
+  return await dbUtils.all(`
+    SELECT * FROM audit_logs
+    WHERE "userId" = $1
+    ORDER BY timestamp DESC
+    LIMIT $2 OFFSET $3
   `, [userId, limit, offset]);
 };
 
 /**
  * Get audit logs for a specific resource
  */
-export const getResourceAuditLogs = (
+export const getResourceAuditLogs = async (
   resource: string,
   resourceId: string,
   limit: number = 100,
   offset: number = 0
-): any[] => {
-  return dbUtils.all(`
-    SELECT * FROM audit_logs 
-    WHERE resource = ? AND resourceId = ? 
-    ORDER BY timestamp DESC 
-    LIMIT ? OFFSET ?
+): Promise<any[]> => {
+  return await dbUtils.all(`
+    SELECT * FROM audit_logs
+    WHERE resource = $1 AND "resourceId" = $2
+    ORDER BY timestamp DESC
+    LIMIT $3 OFFSET $4
   `, [resource, resourceId, limit, offset]);
 };
 
 /**
  * Get failed audit logs for security monitoring
  */
-export const getFailedAuditLogs = (
+export const getFailedAuditLogs = async (
   hours: number = 24,
   limit: number = 100
-): any[] => {
-  return dbUtils.all(`
-    SELECT * FROM audit_logs 
-    WHERE success = 0 
-    AND timestamp > datetime('now', '-${hours} hours')
-    ORDER BY timestamp DESC 
-    LIMIT ?
+): Promise<any[]> => {
+  return await dbUtils.all(`
+    SELECT * FROM audit_logs
+    WHERE success = false
+    AND timestamp > NOW() - INTERVAL '${hours} hours'
+    ORDER BY timestamp DESC
+    LIMIT $1
   `, [limit]);
 };
 
 /**
  * Get suspicious activity patterns
  */
-export const getSuspiciousActivity = (
+export const getSuspiciousActivity = async (
   hours: number = 24
-): any[] => {
-  return dbUtils.all(`
-    SELECT 
-      ipAddress,
-      COUNT(*) as failedAttempts,
-      COUNT(DISTINCT userId) as affectedUsers,
-      MIN(timestamp) as firstAttempt,
-      MAX(timestamp) as lastAttempt
-    FROM audit_logs 
-    WHERE success = 0 
-    AND timestamp > datetime('now', '-${hours} hours')
-    AND action LIKE '%login%' OR action LIKE '%security%'
-    GROUP BY ipAddress
-    HAVING failedAttempts > 5
-    ORDER BY failedAttempts DESC
+): Promise<any[]> => {
+  return await dbUtils.all(`
+    SELECT
+      "ipAddress",
+      COUNT(*) as "failedAttempts",
+      COUNT(DISTINCT "userId") as "affectedUsers",
+      MIN(timestamp) as "firstAttempt",
+      MAX(timestamp) as "lastAttempt"
+    FROM audit_logs
+    WHERE success = false
+    AND timestamp > NOW() - INTERVAL '${hours} hours'
+    AND (action LIKE '%login%' OR action LIKE '%security%')
+    GROUP BY "ipAddress"
+    HAVING COUNT(*) > 5
+    ORDER BY COUNT(*) DESC
   `);
 };
 
 /**
  * Clean up old audit logs (data retention)
  */
-export const cleanupOldAuditLogs = (retentionDays: number = 2555): number => { // 7 years default
+export const cleanupOldAuditLogs = async (retentionDays: number = 2555): Promise<number> => { // 7 years default
   try {
-    const result = dbUtils.run(`
-      DELETE FROM audit_logs 
-      WHERE timestamp < datetime('now', '-${retentionDays} days')
+    const result = await dbUtils.run(`
+      DELETE FROM audit_logs
+      WHERE timestamp < NOW() - INTERVAL '${retentionDays} days'
     `);
-    
-    dbLogger.info(`Cleaned up ${result.changes} old audit log entries`, {
+
+    const deletedCount = result.rowCount || 0;
+    dbLogger.info(`Cleaned up ${deletedCount} old audit log entries`, {
       retentionDays,
-      deletedCount: result.changes
+      deletedCount
     });
-    
-    return result.changes || 0;
+
+    return deletedCount;
   } catch (error) {
     dbLogger.error('Failed to cleanup old audit logs:', {
       error: error instanceof Error ? error.message : 'Unknown error',

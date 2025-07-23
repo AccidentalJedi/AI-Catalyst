@@ -25,7 +25,7 @@ import config from '@config/index';
 import { logger } from '@utils/logger';
 
 // Import database utilities
-import { initializeDatabase } from '@utils/database';
+import { DatabaseAdapterFactory } from '@utils/databaseAdapter';
 import { initializeSchema } from '@models/schema';
 
 // Import services
@@ -59,28 +59,22 @@ const createDirectories = () => {
 // Initialize directories
 createDirectories();
 
-// Initialize database
-try {
-  initializeDatabase();
-  initializeSchema();
-  logger.info('Database initialized successfully');
-} catch (error) {
-  logger.error('Failed to initialize database:', {
-    error: error instanceof Error ? error.message : 'Unknown error'
-  });
-  process.exit(1);
-}
-
-// Initialize services
+// Initialize database and services
 (async () => {
   try {
+    // Initialize database
+    await DatabaseAdapterFactory.initialize();
+    initializeSchema();
+    logger.info('Database initialized successfully');
+
+    // Initialize services
     await DocumentGenerationService.initialize();
     logger.info('Document generation service initialized successfully');
   } catch (error) {
-    logger.error('Failed to initialize document generation service:', {
+    logger.error('Failed to initialize application:', {
       error: error instanceof Error ? error.message : 'Unknown error'
     });
-    // Don't exit - service can still run without document generation
+    process.exit(1);
   }
 })();
 

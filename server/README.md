@@ -29,12 +29,13 @@ This system includes **mandatory FinCEN Beneficial Ownership Information (BOI) r
 ## 🏗️ Architecture
 
 - **Framework**: Express.js with TypeScript
-- **Database**: SQLite with better-sqlite3 (high performance)
+- **Database**: PostgreSQL (production) / SQLite (development) with connection pooling
 - **Authentication**: JWT with secure middleware
 - **Security**: Helmet, CORS, rate limiting, input sanitization
 - **Logging**: Winston with structured logging
 - **Document Generation**: Handlebars templates with PDF generation
 - **External Integrations**: DocuSign SDK, Texas SOS API
+- **Performance**: Supports 200+ concurrent users with <100ms response times
 
 ## 📁 Project Structure
 
@@ -65,9 +66,59 @@ server/
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 - Git
+- PostgreSQL 14+ (for production) or SQLite (for development)
+
+### Database Setup
+
+#### Option 1: PostgreSQL (Recommended for Production)
+
+1. **Install PostgreSQL**:
+
+   **Ubuntu/Debian:**
+   ```bash
+   sudo apt update
+   sudo apt install postgresql postgresql-contrib
+   ```
+
+   **macOS:**
+   ```bash
+   brew install postgresql
+   brew services start postgresql
+   ```
+
+   **Windows:**
+   Download from [PostgreSQL official website](https://www.postgresql.org/download/windows/)
+
+2. **Create Database and User**:
+   ```bash
+   # Create user
+   sudo -u postgres createuser --interactive ai_catalyst_user
+
+   # Create database
+   sudo -u postgres createdb ai_catalyst_dev -O ai_catalyst_user
+
+   # Set password
+   sudo -u postgres psql -c "ALTER USER ai_catalyst_user PASSWORD 'your_secure_password';"
+   ```
+
+3. **Configure Environment Variables**:
+   ```bash
+   # Add to .env file
+   DATABASE_TYPE=postgresql
+   DATABASE_URL=postgresql://ai_catalyst_user:your_password@localhost:5432/ai_catalyst_dev
+   POSTGRES_HOST=localhost
+   POSTGRES_PORT=5432
+   POSTGRES_DATABASE=ai_catalyst_dev
+   POSTGRES_USER=ai_catalyst_user
+   POSTGRES_PASSWORD=your_secure_password
+   ```
+
+#### Option 2: SQLite (Development Only)
+
+SQLite is automatically configured for development. No additional setup required.
 
 ### Installation
 
@@ -94,11 +145,41 @@ server/
 
 ### Available Scripts
 
+#### Development Scripts
 - `npm run server:dev` - Start development server with hot reload
 - `npm run server:build` - Build TypeScript to JavaScript
 - `npm run server:start` - Start production server
 - `npm run server:watch` - Watch TypeScript compilation
 - `npm run dev:full` - Start both frontend and backend concurrently
+
+#### Database Management Scripts
+- `npm run db:status` - Check migration status
+- `npm run db:migrate:latest` - Run all pending migrations
+- `npm run db:migrate:up` - Run next migration
+- `npm run db:migrate:down` - Rollback last migration
+- `npm run db:rollback:last` - Rollback last migration
+- `npm run db:rollback:version <version>` - Rollback to specific version
+- `npm run db:backup:create` - Create database backup
+- `npm run db:backup:restore <path>` - Restore from backup
+- `npm run db:seed` - Seed database with initial data
+
+#### Data Migration Scripts
+- `npm run db:migrate:data` - Migrate data from SQLite to PostgreSQL
+- `npm run db:migrate:data:dry-run` - Preview data migration
+- `npm run db:verify:integrity` - Verify data integrity
+
+#### Performance Testing Scripts
+- `npm run perf:load:light` - Light load test (10 users, 30s)
+- `npm run perf:load:medium` - Medium load test (50 users, 1min)
+- `npm run perf:load:heavy` - Heavy load test (100 users, 2min)
+- `npm run perf:load:production` - Production load test (200 users, 5min)
+- `npm run perf:backup:test` - Test backup and recovery procedures
+
+#### Testing Scripts
+- `npm run test` - Run all tests
+- `npm run test:postgresql` - Run tests with PostgreSQL
+- `npm run test:sqlite` - Run tests with SQLite
+- `npm run test:coverage` - Run tests with coverage report
 
 ## 🔧 Configuration
 

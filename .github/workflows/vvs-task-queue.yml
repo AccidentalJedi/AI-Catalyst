@@ -9,7 +9,7 @@ jobs:
   process-queue:
     runs-on: ubuntu-latest
     # Safety check to prevent running on forks
-    if: github.repository == 'AccidentalJedi/AI-Catalyst'
+    if: github.repository == 'gerry-schiller/AI-Catalyst'
 
     steps:
       - name: Checkout repository
@@ -19,57 +19,74 @@ jobs:
           token: ${{ secrets.WORKFLOW_PAT }}
           fetch-depth: 0
 
-      - name: Check if queue file exists and is not empty
-        id: check_queue
-        run: |
-          if [ -s vvs_task_queue.txt ]; then
-            echo "Queue has tasks. Proceeding."
-            echo "queue_not_empty=true" >> $GITHUB_OUTPUT
-          else
-            echo "Queue is empty. Nothing to do."
-            echo "queue_not_empty=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Set up Node.js
-        if: steps.check_queue.outputs.queue_not_empty == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Set up Python
-        if: steps.check_queue.outputs.queue_not_empty == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
+      - name: Find next task from plan
+        id: find_task
+        run: |
+          pip install pyyaml
+          python -c "
+          import yaml, os
+          plan_file = 'task_definitions.yml'
+          if not os.path.exists(plan_file):
+              print('No task_definitions.yml found. Nothing to do.')
+              exit()
+          with open(plan_file, 'r') as f: data = yaml.safe_load(f)
+          next_task = next((t for t in data if t.get('status') != 'COMPLETED'), None)
+          if next_task:
+              print(f\"Next task found: {next_task['task_id']}\")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as hf:
+                  hf.write(f\"task_id={next_task['task_id']}\\n\")
+                  hf.write(f\"task_description={next_task['description']}\\n\")
+          else:
+              print('All tasks in plan are completed.')
+          "
+
+      - name: Set up Node.js
+        if: steps.find_task.outputs.task_id
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Install dependencies
-        if: steps.check_queue.outputs.queue_not_empty == 'true'
+        if: steps.find_task.outputs.task_id
         run: |
           npm install
           pip install -r requirements.txt
 
       - name: Configure Git User
-        if: steps.check_queue.outputs.queue_not_empty == 'true'
+        if: steps.find_task.outputs.task_id
         run: |
           git config --global user.name "AI Catalyst MCP"
           git config --global user.email "mcp-bot@users.noreply.github.com"
 
       - name: Process first task from queue
-        if: steps.check_queue.outputs.queue_not_empty == 'true'
+        if: steps.find_task.outputs.task_id
         id: process_task
         run: |
-          TASK=$(head -n 1 vvs_task_queue.txt)
-          echo "Processing task: $TASK"
-          echo "task_description=$TASK" >> $GITHUB_OUTPUT
-          python "scripts/safe_mcp.py" --task "$TASK"
+          echo "Processing task: ${{ steps.find_task.outputs.task_description }}"
+          python "scripts/safe_mcp.py" --task "${{ steps.find_task.outputs.task_description }}"
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
       - name: Update task queue on success
-        if: success() && steps.check_queue.outputs.queue_not_empty == 'true'
+        if: success() && steps.find_task.outputs.task_id
         run: |
-          # Remove the first line from the queue
-          sed -i '1d' vvs_task_queue.txt
-          git add vvs_task_queue.txt
-          git commit -m "chore(vvs): Processed task and updated queue" -m "Completed: ${{ steps.process_task.outputs.task_description }}"
+          # Mark task as completed in the plan
+          python -c "
+          import yaml, os
+          plan_file = 'task_definitions.yml'
+          task_id = '${{ steps.find_task.outputs.task_id }}'
+          with open(plan_file, 'r') as f: data = yaml.safe_load(f)
+          for task in data:
+              if task.get('task_id') == task_id:
+                  task['status'] = 'COMPLETED'
+                  break
+          with open(plan_file, 'w') as f: yaml.dump(data, f, sort_keys=False)
+          "
+          git add task_definitions.yml
+          git commit -m "chore(mcp): Mark task '${{ steps.find_task.outputs.task_id }}' as completed"
           git push origin main

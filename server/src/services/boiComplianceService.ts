@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { dbUtils, transaction } from '@utils/database';
+import { dbUtils } from '@utils/databaseAdapter';
 import { encryptSensitiveFields, decryptSensitiveFields } from '@utils/encryption';
 import { logSuccess, logFailure, logDataChange, AuditAction, AuditResource } from '@utils/audit';
 import { boiLogger } from '@utils/logger';
