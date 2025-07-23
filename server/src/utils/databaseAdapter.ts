@@ -206,4 +206,5 @@ export const unifiedDbUtils = {
 
 // Export the adapter factory and utilities
 export { DatabaseAdapterFactory, unifiedDbUtils as dbUtils };
+export const transaction = unifiedDbUtils.transaction;
 export type { Knex };

@@ -4,7 +4,7 @@
  */
 
 import crypto from 'crypto';
-import { dbUtils } from '@utils/databaseAdapter';
+import { dbUtils, transaction } from '@utils/databaseAdapter';
 import { dbLogger } from '@utils/logger';
 import { encryptSensitiveFields, decryptSensitiveFields } from '@utils/encryption';
 import { 
@@ -110,7 +110,7 @@ export class BusinessFormationService {
     try {
       const result = await dbUtils.get(`
         SELECT * FROM business_formation_workflows
-        WHERE id = $1 AND "userId" = $2
+        WHERE id = ? AND userId = ?
       `, [workflowId, userId]);
       
       if (!result) {
@@ -196,8 +196,8 @@ export class BusinessFormationService {
    */
   static async getUserBusinesses(userId: string): Promise<BusinessListResponse> {
     try {
-      const results = dbUtils.all(`
-        SELECT 
+      const results = await dbUtils.all(`
+        SELECT
           c.*,
           ba.street as business_street,
           ba.city as business_city,
@@ -483,16 +483,16 @@ export class BusinessFormationService {
    */
   static async completeWorkflow(workflowId: string, userId: string): Promise<boolean> {
     try {
-      return await transaction(async (db) => {
+      return await transaction(async (trx) => {
         // Update workflow status
-        (db as any).run(`
+        await trx.raw(`
           UPDATE business_formation_workflows
           SET status = 'completed', actualCompletion = CURRENT_TIMESTAMP, updatedAt = CURRENT_TIMESTAMP
           WHERE id = ? AND userId = ?
         `, [workflowId, userId]);
 
         // Update company status
-        (db as any).run(`
+        await trx.raw(`
           UPDATE companies
           SET status = 'active', updatedAt = CURRENT_TIMESTAMP
           WHERE id = (
@@ -523,7 +523,7 @@ export class BusinessFormationService {
    */
   static async cancelWorkflow(workflowId: string, userId: string, reason?: string): Promise<boolean> {
     try {
-      return await transaction(async (db) => {
+      return await transaction(async (trx) => {
         const workflow = await this.getWorkflow(workflowId, userId);
         if (!workflow) {
           throw new Error('Workflow not found');
@@ -536,7 +536,7 @@ export class BusinessFormationService {
         }
 
         // Update workflow status
-        (db as any).run(`
+        await trx.raw(`
           UPDATE business_formation_workflows
           SET status = 'cancelled', errorLog = ?, updatedAt = CURRENT_TIMESTAMP
           WHERE id = ? AND userId = ?

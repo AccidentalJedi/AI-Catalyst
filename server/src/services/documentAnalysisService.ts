@@ -470,7 +470,7 @@ const performQualificationAnalysis = async (
     const qualificationResults = await analyzeQualifications(structuredData);
     const processingTime = Date.now() - startTime;
     
-    dbUtils.run(`
+    await dbUtils.run(`
       INSERT INTO document_analysis_results (
         id, documentId, userId, analysisType, analysisStatus, structuredData,
         confidenceScore, processingTime, createdAt, completedAt
@@ -555,9 +555,9 @@ const analyzeQualifications = async (data: Record<string, any>): Promise<Record<
 };
 
 const updateDocumentProcessingStatus = async (documentId: string, status: string): Promise<void> => {
-  dbUtils.run(`
-    UPDATE uploaded_documents 
-    SET processingStatus = ?, processedAt = CURRENT_TIMESTAMP 
+  await dbUtils.run(`
+    UPDATE uploaded_documents
+    SET processingStatus = ?, processedAt = CURRENT_TIMESTAMP
     WHERE id = ?
   `, [status, documentId]);
 };

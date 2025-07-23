@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import { securityConfig } from '@config/index';
-import { dbUtils } from '@utils/database';
+import { dbUtils } from '@utils/databaseAdapter';
 import { dbLogger } from '@utils/logger';
 
 // Encryption configuration

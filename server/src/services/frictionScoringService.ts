@@ -1,4 +1,4 @@
-import { dbUtils } from '@utils/database';
+import { dbUtils } from '@utils/databaseAdapter';
 import { dbLogger } from '@utils/logger';
 
 // Friction scoring components as defined in the framework
@@ -228,10 +228,10 @@ export const calculateGrantFrictionScore = (grantData: {
 export const updateGrantFrictionScore = async (grantId: string): Promise<void> => {
   try {
     // Get grant data
-    const grant = dbUtils.get<any>(`
-      SELECT requiredDocuments, actionableSteps, applicationProcess, 
+    const grant = await dbUtils.get<any>(`
+      SELECT requiredDocuments, actionableSteps, applicationProcess,
              eligibilityCriteria, applicationURL
-      FROM grant_opportunities 
+      FROM grant_opportunities
       WHERE id = ?
     `, [grantId]);
     
@@ -252,8 +252,8 @@ export const updateGrantFrictionScore = async (grantId: string): Promise<void> =
     const { frictionScore, components } = calculateGrantFrictionScore(grantData);
     
     // Update grant with friction score and components
-    dbUtils.run(`
-      UPDATE grant_opportunities 
+    await dbUtils.run(`
+      UPDATE grant_opportunities
       SET frictionScore = ?, documentationBurden = ?, processSteps = ?,
           thirdPartyDependency = ?, ambiguityGatekeeping = ?, submissionMode = ?,
           updatedAt = CURRENT_TIMESTAMP
@@ -287,7 +287,7 @@ export const updateGrantFrictionScore = async (grantId: string): Promise<void> =
  */
 export const updateAllGrantFrictionScores = async (): Promise<number> => {
   try {
-    const grants = dbUtils.all<{ id: string }>(`
+    const grants = await dbUtils.all<{ id: string }>(`
       SELECT id FROM grant_opportunities WHERE isActive = 1
     `);
     
@@ -322,15 +322,15 @@ export const updateAllGrantFrictionScores = async (): Promise<number> => {
 /**
  * Get grants by friction score range
  */
-export const getGrantsByFrictionRange = (
+export const getGrantsByFrictionRange = async (
   minScore: number = 1,
   maxScore: number = 10,
   limit: number = 50
-): any[] => {
-  return dbUtils.all(`
+): Promise<any[]> => {
+  return await dbUtils.all(`
     SELECT id, grantName, grantingOrganization, frictionScore, grantType, maxGrantAmount
-    FROM grant_opportunities 
-    WHERE isActive = 1 
+    FROM grant_opportunities
+    WHERE isActive = 1
     AND frictionScore BETWEEN ? AND ?
     ORDER BY frictionScore ASC, maxGrantAmount DESC
     LIMIT ?
@@ -340,19 +340,19 @@ export const getGrantsByFrictionRange = (
 /**
  * Get friction score statistics
  */
-export const getFrictionScoreStatistics = (): {
+export const getFrictionScoreStatistics = async (): Promise<{
   averageScore: number;
   distribution: Record<ApplicationComplexity, number>;
   totalGrants: number;
-} => {
-  const stats = dbUtils.get<any>(`
-    SELECT 
+}> => {
+  const stats = await dbUtils.get<any>(`
+    SELECT
       AVG(frictionScore) as averageScore,
       COUNT(*) as totalGrants,
       SUM(CASE WHEN frictionScore <= 3 THEN 1 ELSE 0 END) as lowComplexity,
       SUM(CASE WHEN frictionScore BETWEEN 4 AND 6 THEN 1 ELSE 0 END) as mediumComplexity,
       SUM(CASE WHEN frictionScore >= 7 THEN 1 ELSE 0 END) as highComplexity
-    FROM grant_opportunities 
+    FROM grant_opportunities
     WHERE isActive = 1
   `);
   

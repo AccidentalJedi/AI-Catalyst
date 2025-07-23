@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { dbUtils, transaction } from '@utils/database';
+import { dbUtils, transaction } from '@utils/databaseAdapter';
 import { logSuccess, logFailure, AuditAction, AuditResource } from '@utils/audit';
 import { dbLogger } from '@utils/logger';
 
@@ -121,8 +121,8 @@ export const createSyncRecord = async (
 export const processPendingSyncs = async (): Promise<number> => {
   try {
     // Get pending sync records
-    const pendingRecords = dbUtils.all<any>(`
-      SELECT * FROM sync_records 
+    const pendingRecords = await dbUtils.all<any>(`
+      SELECT * FROM sync_records
       WHERE status IN ('pending', 'retrying')
       AND (nextRetryAt IS NULL OR nextRetryAt <= CURRENT_TIMESTAMP)
       ORDER BY createdAt ASC
@@ -280,9 +280,9 @@ const processSyncRecord = async (record: any): Promise<void> => {
 /**
  * Get sync status for entity
  */
-export const getSyncStatus = (entityType: string, entityId: string): any[] => {
-  return dbUtils.all(`
-    SELECT * FROM sync_records 
+export const getSyncStatus = async (entityType: string, entityId: string): Promise<any[]> => {
+  return await dbUtils.all(`
+    SELECT * FROM sync_records
     WHERE entityType = ? AND entityId = ?
     ORDER BY createdAt DESC
   `, [entityType, entityId]);

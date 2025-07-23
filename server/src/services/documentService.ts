@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { dbUtils } from '@utils/databaseAdapter';
+import { dbUtils, transaction } from '@utils/databaseAdapter';
 import { encryptSensitiveFields, decryptSensitiveFields, generateSecureToken } from '@utils/encryption';
 import { logSuccess, logFailure, logDataChange, AuditAction, AuditResource } from '@utils/audit';
 import { dbLogger, fileLogger } from '@utils/logger';
@@ -98,13 +98,13 @@ export const uploadDocument = async (
     // Calculate retention schedule
     const scheduledDeletion = calculateRetentionSchedule(uploadData.retentionPolicy || 'standard');
     
-    const document = await transaction(async (db) => {
+    const document = await transaction(async (trx) => {
       // Encrypt and store file
       const encryptedBuffer = await encryptFile(uploadData.fileBuffer);
       fs.writeFileSync(filePath, encryptedBuffer);
-      
+
       // Store document metadata
-      dbUtils.run(`
+      await trx.raw(`
         INSERT INTO uploaded_documents (
           id, userId, originalFileName, storedFileName, filePath, fileSize,
           mimeType, documentType, processingStatus, isEncrypted, retentionPolicy,
@@ -123,7 +123,7 @@ export const uploadDocument = async (
         uploadData.retentionPolicy || 'standard',
         scheduledDeletion ? scheduledDeletion.toISOString() : null
       ]);
-      
+
       return documentId;
     });
     
@@ -186,19 +186,19 @@ export const getDocumentById = async (
   userId: string
 ): Promise<DocumentEntity | null> => {
   try {
-    const document = dbUtils.get<any>(`
-      SELECT * FROM uploaded_documents 
+    const document = await dbUtils.get<any>(`
+      SELECT * FROM uploaded_documents
       WHERE id = ? AND userId = ? AND processingStatus != 'deleted'
     `, [documentId, userId]);
-    
+
     if (!document) {
       return null;
     }
-    
+
     // Update last accessed time
-    dbUtils.run(`
-      UPDATE uploaded_documents 
-      SET lastAccessedAt = CURRENT_TIMESTAMP 
+    await dbUtils.run(`
+      UPDATE uploaded_documents
+      SET lastAccessedAt = CURRENT_TIMESTAMP
       WHERE id = ?
     `, [documentId]);
     
@@ -234,8 +234,8 @@ export const getDocumentById = async (
  */
 export const getUserDocuments = async (userId: string): Promise<DocumentEntity[]> => {
   try {
-    const documents = dbUtils.all<any>(`
-      SELECT * FROM uploaded_documents 
+    const documents = await dbUtils.all<any>(`
+      SELECT * FROM uploaded_documents
       WHERE userId = ? AND processingStatus != 'deleted'
       ORDER BY uploadedAt DESC
     `, [userId]);

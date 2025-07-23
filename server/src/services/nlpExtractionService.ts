@@ -1,4 +1,4 @@
-import { dbUtils } from '@utils/database';
+import { dbUtils } from '@utils/databaseAdapter';
 import { dbLogger } from '@utils/logger';
 import { NERTrainingService } from './nerTrainingService';
 

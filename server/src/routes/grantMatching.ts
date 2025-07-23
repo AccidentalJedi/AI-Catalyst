@@ -106,7 +106,7 @@ router.get('/matches', authenticateToken, async (req: AuthenticatedRequest, res:
     }
 
     const limit = parseInt(req.query.limit as string) || 20;
-    const matches = getUserGrantMatches(userId, limit);
+    const matches = await getUserGrantMatches(userId, limit);
 
     res.json({
       success: true,
@@ -268,8 +268,8 @@ router.get('/grants/:grantId', authenticateToken, async (req: AuthenticatedReque
   try {
     const { grantId } = req.params;
     
-    const grant = dbUtils.get(`
-      SELECT 
+    const grant = await dbUtils.get(`
+      SELECT
         id, grantName, grantingOrganization, grantDescription,
         grantType, maxGrantAmount, eligibilityCriteria,
         otherCriteriaText, applicationProcess, applicationURL,
@@ -277,7 +277,7 @@ router.get('/grants/:grantId', authenticateToken, async (req: AuthenticatedReque
         documentationBurden, processSteps, thirdPartyDependency,
         ambiguityGatekeeping, submissionMode, pointOfContact,
         averageProcessingTime, successRate, lastUpdated
-      FROM grant_opportunities 
+      FROM grant_opportunities
       WHERE id = ? AND isActive = 1
     `, [grantId]);
 
@@ -373,7 +373,7 @@ router.get('/search', authenticateToken, async (req: AuthenticatedRequest, res: 
     sql += ` ORDER BY frictionScore ASC, maxGrantAmount DESC LIMIT ?`;
     params.push(limit);
 
-    const grants = dbUtils.all(sql, params);
+    const grants = await dbUtils.all(sql, params);
 
     res.json({
       success: true,

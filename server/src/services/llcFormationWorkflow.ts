@@ -7,7 +7,7 @@ import { BusinessFormationService } from './businessFormationService';
 import { DocumentGenerationService } from './documentGenerationService';
 import { ValidationService } from './validationService';
 import { dbLogger, auditLogger } from '@utils/logger';
-import { dbUtils } from '@utils/databaseAdapter';
+import { dbUtils, transaction } from '@utils/databaseAdapter';
 import {
   LLCFormationPayload,
   BusinessFormationWorkflow,
@@ -98,7 +98,7 @@ export class LLCFormationWorkflowService {
     stepData: Record<string, any>
   ): Promise<{ success: boolean; nextStep?: string; documentsGenerated?: string[] }> {
     try {
-      return await transaction(async () => {
+      return await transaction(async (trx) => {
         // Update the workflow step
         const success = await BusinessFormationService.updateWorkflowStep(
           workflowId,
@@ -220,7 +220,7 @@ export class LLCFormationWorkflowService {
     userId: string
   ): Promise<{ success: boolean; companyId?: string }> {
     try {
-      return await transaction(async () => {
+      return await transaction(async (trx) => {
         // Complete the workflow
         const success = await BusinessFormationService.completeWorkflow(workflowId, userId);
         if (!success) {

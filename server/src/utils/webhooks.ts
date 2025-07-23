@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { Request, Response } from 'express';
-import { dbUtils } from '@utils/database';
+import { dbUtils } from '@utils/databaseAdapter';
 import { logSuccess, logFailure, AuditAction, AuditResource } from '@utils/audit';
 import { dbLogger } from '@utils/logger';
 

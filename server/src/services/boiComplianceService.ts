@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { dbUtils } from '@utils/databaseAdapter';
+import { dbUtils, transaction } from '@utils/databaseAdapter';
 import { encryptSensitiveFields, decryptSensitiveFields } from '@utils/encryption';
 import { logSuccess, logFailure, logDataChange, AuditAction, AuditResource } from '@utils/audit';
 import { boiLogger } from '@utils/logger';
@@ -74,9 +74,9 @@ export const createBOICompliance = async (
     const complianceId = crypto.randomUUID();
     const deadline = new Date('2025-03-21'); // March 21, 2025 deadline
     
-    const compliance = await transaction(async (db) => {
+    const compliance = await transaction(async (trx) => {
       // Create BOI compliance record
-      dbUtils.run(`
+      await trx.raw(`
         INSERT INTO boi_compliance (
           id, userId, companyId, filingStatus, deadline, exemptionClaimed,
           exemptionReason, remindersSent, createdAt, updatedAt
@@ -90,12 +90,12 @@ export const createBOICompliance = async (
         data.exemptionClaimed || null,
         data.exemptionReason || null
       ]);
-      
+
       // Add beneficial owners
       for (const ownerData of data.beneficialOwners) {
         await addBeneficialOwner(userId, data.companyId, ownerData);
       }
-      
+
       return complianceId;
     });
     
@@ -152,8 +152,8 @@ export const getBOICompliance = async (
   companyId: string
 ): Promise<BOIComplianceEntity | null> => {
   try {
-    const compliance = dbUtils.get<any>(`
-      SELECT * FROM boi_compliance 
+    const compliance = await dbUtils.get<any>(`
+      SELECT * FROM boi_compliance
       WHERE userId = ? AND companyId = ?
       ORDER BY createdAt DESC
       LIMIT 1
@@ -293,9 +293,9 @@ export const addBeneficialOwner = async (
       documentNumber: ownerData.identificationDocument.number
     }, ['firstName', 'lastName', 'dateOfBirth', 'documentNumber']);
     
-    await transaction(async (db) => {
+    await transaction(async (trx) => {
       // Create address
-      dbUtils.run(`
+      await trx.raw(`
         INSERT INTO addresses (
           id, street, city, state, zipCode, county, country, type, createdAt, updatedAt
         ) VALUES (?, ?, ?, ?, ?, ?, ?, 'residential', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -308,9 +308,9 @@ export const addBeneficialOwner = async (
         ownerData.address.county,
         ownerData.address.country
       ]);
-      
+
       // Create beneficial owner
-      dbUtils.run(`
+      await trx.raw(`
         INSERT INTO beneficial_owners (
           id, userId, companyId, firstName, lastName, dateOfBirth, addressId,
           ownershipPercentage, controlType, isExempt, createdAt, updatedAt
@@ -366,9 +366,9 @@ export const addBeneficialOwner = async (
 /**
  * Get companies approaching BOI deadline
  */
-export const getCompaniesApproachingDeadline = (daysBeforeDeadline: number = 30): any[] => {
+export const getCompaniesApproachingDeadline = async (daysBeforeDeadline: number = 30): Promise<any[]> => {
   try {
-    return dbUtils.all(`
+    return await dbUtils.all(`
       SELECT bc.*, u.email, u.firstName, u.lastName, c.legalName
       FROM boi_compliance bc
       JOIN users u ON bc.userId = u.id

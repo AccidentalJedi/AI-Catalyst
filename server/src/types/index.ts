@@ -7,7 +7,7 @@ import { Request } from 'express';
 export * from './businessTypes';
 
 // Re-export utility functions
-export { dbUtils, transaction } from '@utils/database';
+export { dbUtils, transaction } from '@utils/databaseAdapter';
 export { encryptSensitiveFields, decryptSensitiveFields } from '@utils/encryption';
 export { logSuccess, logFailure, logDataChange, AuditAction, AuditResource } from '@utils/audit';
 export { dbLogger, auditLogger, authLogger, fileLogger, boiLogger } from '@utils/logger';

@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { dbUtils } from '@utils/database';
+import { dbUtils } from '@utils/databaseAdapter';
 import { logSuccess, logFailure, AuditAction, AuditResource } from '../types/index';
 import { dbLogger } from '@utils/logger';
 import { analyzeDocument } from '../types/index';
@@ -157,11 +157,11 @@ const performGrantMatching = async (
     for (const result of analysisResults) {
       if (result.structuredData) {
         // Get data points from database
-        const dataPoints = dbUtils.all(`
-          SELECT * FROM document_data_points 
+        const dataPoints = await dbUtils.all(`
+          SELECT * FROM document_data_points
           WHERE analysisId = ? AND verificationStatus != 'flagged'
         `, [result.id]);
-        
+
         allDataPoints.push(...dataPoints);
       }
     }
@@ -210,8 +210,8 @@ const updateUserProfileFromDocument = async (
     // Extract high-confidence data points that can update user profile
     for (const result of analysisResults) {
       if (result.structuredData) {
-        const dataPoints = dbUtils.all(`
-          SELECT * FROM document_data_points 
+        const dataPoints = await dbUtils.all(`
+          SELECT * FROM document_data_points
           WHERE analysisId = ? AND confidenceScore > 0.8 AND verificationStatus = 'unverified'
         `, [result.id]);
         
@@ -341,7 +341,7 @@ const findMatchingGrants = async (userId: string, dataPoints: any[]): Promise<an
       await import('./grantMatchingService.js');
 
     // Get user profile from database
-    const user = dbUtils.get(`
+    const user = await dbUtils.get(`
       SELECT u.*, vv.*
       FROM users u
       LEFT JOIN veteran_verification vv ON u.id = vv.userId

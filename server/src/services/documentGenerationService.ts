@@ -153,8 +153,8 @@ export class DocumentGenerationService {
    */
   static async getDocument(documentId: string, userId: string): Promise<{ content: string; filename: string } | null> {
     try {
-      const result = dbUtils.get(`
-        SELECT d.*, w.userId 
+      const result = await dbUtils.get(`
+        SELECT d.*, w.userId
         FROM generated_documents d
         JOIN business_formation_workflows w ON d.workflowId = w.id
         WHERE d.id = ? AND w.userId = ?
@@ -299,16 +299,16 @@ export class DocumentGenerationService {
    * Update workflow with generated document
    */
   private static async updateWorkflowDocuments(workflowId: string, documentId: string): Promise<void> {
-    const workflow = dbUtils.get(`
+    const workflow = await dbUtils.get(`
       SELECT generatedDocuments FROM business_formation_workflows WHERE id = ?
     `, [workflowId]);
-    
+
     if (workflow) {
       const documents = workflow.generatedDocuments ? JSON.parse(workflow.generatedDocuments) : [];
       documents.push(documentId);
-      
-      dbUtils.run(`
-        UPDATE business_formation_workflows 
+
+      await dbUtils.run(`
+        UPDATE business_formation_workflows
         SET generatedDocuments = ?, updatedAt = CURRENT_TIMESTAMP
         WHERE id = ?
       `, [JSON.stringify(documents), workflowId]);
@@ -323,18 +323,18 @@ export class DocumentGenerationService {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysOld);
       
-      const oldDocuments = dbUtils.all(`
-        SELECT * FROM generated_documents 
+      const oldDocuments = await dbUtils.all(`
+        SELECT * FROM generated_documents
         WHERE generatedAt < ?
       `, [cutoffDate.toISOString()]);
-      
+
       for (const doc of oldDocuments) {
         try {
           // Delete file
           await fs.unlink(doc.filePath);
-          
+
           // Delete database record
-          dbUtils.run('DELETE FROM generated_documents WHERE id = ?', [doc.id]);
+          await dbUtils.run('DELETE FROM generated_documents WHERE id = ?', [doc.id]);
           
           dbLogger.info(`Cleaned up old document: ${doc.filename}`);
         } catch (error) {
