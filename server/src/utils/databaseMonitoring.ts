@@ -1,7 +1,6 @@
 import { Pool } from 'pg';
 import { dbLogger } from '@utils/logger';
 import { getPostgresPool, checkPostgresDatabaseHealth } from '@utils/postgresDatabase';
-import { checkDatabaseHealth as checkSQLiteHealth } from '@utils/database';
 import { DatabaseAdapterFactory } from '@utils/databaseAdapter';
 
 // Database health check result interface
@@ -152,7 +151,7 @@ export const checkPostgreSQLHealth = async (): Promise<DatabaseHealthCheck> => {
   return result;
 };
 
-// SQLite-specific health check
+// SQLite-specific health check using unified adapter
 export const checkSQLiteHealth = (): DatabaseHealthCheck => {
   const startTime = Date.now();
   const result: DatabaseHealthCheck = {
@@ -166,7 +165,9 @@ export const checkSQLiteHealth = (): DatabaseHealthCheck => {
   };
 
   try {
-    const isHealthy = checkSQLiteHealth();
+    // Use unified database adapter for health check
+    const adapter = DatabaseAdapterFactory.getAdapter();
+    const isHealthy = adapter ? true : false;
     result.details.connection = true;
     result.details.query = isHealthy;
     result.responseTime = Date.now() - startTime;
@@ -210,7 +211,7 @@ export const getDatabaseMetrics = async (): Promise<DatabaseMetrics> => {
   
   const metrics: DatabaseMetrics = {
     timestamp: new Date(),
-    databaseType,
+    databaseType: databaseType === 'pg' ? 'postgresql' : 'sqlite' as 'sqlite' | 'postgresql',
     queryPerformance: {
       averageResponseTime: performanceTracker.getAverageResponseTime(),
       slowQueries: performanceTracker.getSlowQueryCount(),

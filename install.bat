@@ -126,7 +126,7 @@ if not exist "server\.env" (
         echo # This file contains development defaults >> "server\.env"
         echo. >> "server\.env"
         echo JWT_SECRET=dev-secret-key-change-in-production >> "server\.env"
-        echo PORT=3001 >> "server\.env"
+        echo PORT=9652 >> "server\.env"
         echo NODE_ENV=development >> "server\.env"
         echo DATABASE_PATH=./data/ai-catalyst.db >> "server\.env"
         echo [OK] Created basic server/.env file
@@ -155,12 +155,12 @@ echo The AI Catalyst Launch Wizard has been successfully installed.
 echo.
 echo Next steps:
 echo 1. Double-click 'run.bat' to start the application
-echo 2. Your browser will automatically open to http://localhost:3000
+echo 2. Your browser will automatically open to http://localhost:9655
 echo 3. Follow the wizard to explore the AI Catalyst system
 echo.
 echo If you encounter any issues:
 echo - Check the troubleshooting section in README.md
-echo - Ensure no other applications are using ports 3000 or 3001
+echo - Ensure no other applications are using ports 9655 or 9652
 echo - Try running as Administrator if you get permission errors
 echo.
 echo Press any key to exit...

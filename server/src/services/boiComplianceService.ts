@@ -392,7 +392,7 @@ export const getCompaniesApproachingDeadline = async (daysBeforeDeadline: number
  */
 export const sendBOIReminders = async (): Promise<number> => {
   try {
-    const companies = getCompaniesApproachingDeadline(30);
+    const companies = await getCompaniesApproachingDeadline(30);
     let remindersSent = 0;
     
     for (const company of companies) {

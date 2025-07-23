@@ -310,7 +310,7 @@ export const retryFailedSyncs = async (entityType?: string, externalSystem?: str
       params.push(externalSystem);
     }
     
-    const result = dbUtils.run(query, params);
+    const result = await dbUtils.run(query, params);
     
     dbLogger.info('Failed syncs reset for retry', {
       count: result.changes,
@@ -332,10 +332,10 @@ export const retryFailedSyncs = async (entityType?: string, externalSystem?: str
 /**
  * Clean up old sync records
  */
-export const cleanupOldSyncRecords = (retentionDays: number = 90): number => {
+export const cleanupOldSyncRecords = async (retentionDays: number = 90): Promise<number> => {
   try {
-    const result = dbUtils.run(`
-      DELETE FROM sync_records 
+    const result = await dbUtils.run(`
+      DELETE FROM sync_records
       WHERE status IN ('completed', 'failed')
       AND createdAt < datetime('now', '-${retentionDays} days')
     `);

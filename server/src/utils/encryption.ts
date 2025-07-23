@@ -180,17 +180,17 @@ export const verifyPassword = async (password: string, hash: string): Promise<bo
 /**
  * Create or rotate encryption key
  */
-export const createEncryptionKey = (keyName: string): void => {
+export const createEncryptionKey = async (keyName: string): Promise<void> => {
   try {
     // Check if key already exists
-    const existingKey = dbUtils.get<EncryptionKey>(
+    const existingKey = await dbUtils.get<EncryptionKey>(
       'SELECT * FROM encryption_keys WHERE keyName = ? AND isActive = 1',
       [keyName]
     );
     
     if (existingKey) {
       // Deactivate existing key
-      dbUtils.run(
+      await dbUtils.run(
         'UPDATE encryption_keys SET isActive = 0, rotatedAt = CURRENT_TIMESTAMP WHERE keyName = ?',
         [keyName]
       );
@@ -209,7 +209,7 @@ export const createEncryptionKey = (keyName: string): void => {
     const encryptedKeyWithIv = iv.toString('hex') + ':' + encryptedKey;
     
     // Store new key
-    dbUtils.run(`
+    await dbUtils.run(`
       INSERT INTO encryption_keys (id, keyName, keyVersion, encryptedKey, algorithm, isActive)
       VALUES (?, ?, ?, ?, ?, 1)
     `, [
