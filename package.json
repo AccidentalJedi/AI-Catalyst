@@ -29,7 +29,7 @@
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.0",
+    "react-router-dom": "^7.9.3",
     "react-hook-form": "^7.48.0",
     "zustand": "^4.4.0",
     "@chakra-ui/react": "^2.8.0",
